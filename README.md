@@ -1,4 +1,4 @@
-# Blink3000 — Voluntary Blink Rate Tester
+# Blinky 3000 — Voluntary Blink Rate Tester
 
 A Progressive Web App (PWA) that measures voluntary blink rate using your device's front camera and MediaPipe Face Mesh.
 
