@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="IrisCalib">
+<meta name="apple-mobile-web-app-title" content="Blinky 3000">
 <meta name="theme-color" content="#050508">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>IrisCalib</title>
+<title>Blinky 3000</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -21,229 +21,232 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{height:-webkit-fill-available;background:var(--bg)}
-body{
-  min-height:100vh;min-height:-webkit-fill-available;
-  background:var(--bg);color:var(--text);font-family:var(--sans);
-  overflow-y:auto;-webkit-overflow-scrolling:touch;
-}
+body{min-height:100vh;min-height:-webkit-fill-available;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #app{display:flex;flex-direction:column;min-height:100vh;min-height:-webkit-fill-available}
-header{
-  display:flex;align-items:center;gap:10px;padding:0 18px;height:50px;
-  background:var(--surf);border-bottom:1px solid var(--border);
-  flex-shrink:0;z-index:5;position:sticky;top:0;
-}
+
+/* Ghost strip */
+#ghostStrip{height:38px;background:var(--bg);overflow:hidden;border-bottom:1px solid var(--border);flex-shrink:0;position:relative;}
+.ghost-lane{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;}
+.ghost{position:absolute;width:26px;height:26px;will-change:transform;}
+.ghost svg{display:block;width:100%;height:100%}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+/* Header */
+header{display:flex;align-items:center;gap:10px;padding:0 18px;height:50px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0;z-index:5;position:sticky;top:0;}
 .logo{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
 .logo span{color:var(--dim);font-weight:400}
 .badge{font-family:var(--mono);font-size:10px;background:var(--accent);color:#071a14;padding:2px 5px;border-radius:3px}
-.pill{margin-left:auto;display:flex;align-items:center;gap:6px;padding:4px 11px;
-  border-radius:20px;background:var(--surf2);border:1px solid var(--border);
-  font-family:var(--mono);font-size:11px;color:var(--dim)}
+.pill{margin-left:auto;display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;background:var(--surf2);border:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--dim)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--dim);transition:background .3s}
 .dot.on{background:var(--accent);box-shadow:0 0 7px var(--accent)}
 .dot.warn{background:var(--warn);box-shadow:0 0 7px var(--warn)}
+.dot.rec{background:var(--accent3);box-shadow:0 0 7px var(--accent3);animation:pulse-dot .7s ease-in-out infinite alternate}
+@keyframes pulse-dot{from{opacity:.5}to{opacity:1}}
 
-/* Camera: fixed aspect, never taller than 55vh so panel is reachable */
-#camwrap{
-  position:relative;width:100%;
-  height:clamp(200px,55vw,55vh);
-  background:#000;overflow:hidden;flex-shrink:0;
-}
+/* Camera */
+#camwrap{position:relative;width:100%;height:clamp(200px,55vw,55vh);background:#000;overflow:hidden;flex-shrink:0;}
 video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 canvas#overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
-canvas#tapCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:4;touch-action:none}
+#blinkFlash{position:absolute;inset:0;background:rgba(74,240,200,0);pointer-events:none;z-index:4;transition:background 0.05s;}
+#blinkFlash.flash{background:rgba(74,240,200,0.25)}
+#liveCount{display:none;position:absolute;top:10px;right:10px;background:rgba(5,5,8,.85);border:1px solid var(--accent3);border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:13px;color:var(--accent3);letter-spacing:.5px;z-index:5;}
 
-/* Panel scrolls on iOS */
-#panel{
-  background:var(--surf);border-top:1px solid var(--border);
-  padding:14px 18px 40px;flex:1;
-  display:flex;flex-direction:column;gap:12px;
-  overflow-y:auto;-webkit-overflow-scrolling:touch;
-}
+/* Panel */
+#panel{background:var(--surf);border-top:1px solid var(--border);padding:14px 18px 40px;flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 
-.steps{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-.step{font-family:var(--mono);font-size:10px;letter-spacing:.8px;
-  padding:3px 8px;border-radius:4px;background:var(--surf2);
-  border:1px solid var(--border);color:var(--dim);transition:all .25s}
-.step.active{border-color:var(--accent);color:var(--accent)}
-.step.done{border-color:rgba(74,240,200,.3);color:rgba(74,240,200,.5)}
-.sep{color:var(--dim);font-size:10px}
-
+/* Instr */
 #instr{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.7;min-height:36px}
 #instr span{color:var(--accent)}
+#instr span.w{color:var(--warn)}
 
-/* Tap progress dots */
-#tapProgress{display:none;align-items:center;gap:8px;flex-wrap:wrap}
-.tpdot{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--warn);
-  background:transparent;transition:background .2s;flex-shrink:0}
-.tpdot.filled{background:var(--warn)}
-#tapMsg{font-family:var(--mono);font-size:10px;color:var(--warn)}
+/* Setup controls */
+#durRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dur-label{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.dur-btn{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;background:var(--surf2);border:1px solid var(--border);color:var(--dim);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s}
+.dur-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(74,240,200,.08)}
+.dur-custom{width:52px;background:var(--surf2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;border-radius:4px;text-align:center}
+.dur-custom:focus{outline:none;border-color:var(--accent)}
+#eyeRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.eye-lbl{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.eye-btn{font-family:var(--mono);font-size:10px;padding:4px 12px;border-radius:4px;background:var(--surf2);border:1px solid var(--border);color:var(--dim);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s}
+.eye-btn.active-L{border-color:var(--accent2);color:var(--accent2);background:rgba(123,143,255,.08)}
+.eye-btn.active-R{border-color:var(--accent3);color:var(--accent3);background:rgba(255,107,157,.08)}
+.eye-btn.active-B{border-color:var(--accent);color:var(--accent);background:rgba(74,240,200,.08)}
 
-#scalebox{font-family:var(--mono);font-size:11px;color:var(--dim)}
-#scalebox span{color:var(--accent)}
+/* Calibration */
+#calSection{display:none;flex-direction:column;gap:6px}
+.cal-phase-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sep{color:var(--dim);font-size:10px}
+.cal-phase{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);color:var(--dim);background:var(--surf2);transition:all .25s}
+.cal-phase.active{border-color:var(--warn);color:var(--warn);background:rgba(255,179,71,.08);animation:pulse-btn .7s ease-in-out infinite alternate}
+.cal-phase.done{border-color:rgba(74,240,200,.35);color:rgba(74,240,200,.6)}
+#calBar{display:none;flex-direction:column;gap:4px}
+.calbar-label{font-family:var(--mono);font-size:10px;color:var(--warn)}
+.calbar-track{height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
+.calbar-fill{height:100%;background:var(--warn);border-radius:2px;width:0%;transition:width .08s linear}
+#calResults{display:none;flex-direction:row;gap:14px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:10px;color:var(--dim);padding:7px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:6px}
+.cal-chip{display:flex;flex-direction:column;gap:1px}
+.cal-chip-lbl{font-size:9px;letter-spacing:.5px;color:var(--dim)}
+.cal-chip-val{color:var(--accent);font-weight:700}
+.cal-recal{font-size:10px;color:var(--dim);cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-left:auto}
+.cal-recal:hover{color:var(--accent)}
 
-#detbadge{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;
-  display:inline-block;transition:all .3s}
-#detbadge.none{background:var(--surf2);border:1px solid var(--border);color:var(--dim)}
-#detbadge.locked{background:rgba(255,107,157,.1);border:1px solid var(--accent3);color:var(--accent3)}
+/* Queue tags */
+#queueRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qtag{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);color:var(--dim);background:var(--surf2);transition:all .25s}
+.qtag.next{border-color:var(--warn);color:var(--warn);background:rgba(255,179,71,.07)}
+.qtag.done{border-color:rgba(74,240,200,.3);color:rgba(74,240,200,.5)}
+.qtag.running{border-color:var(--accent3);color:var(--accent3);background:rgba(255,107,157,.1);animation:pulse-btn .7s ease-in-out infinite alternate}
 
-.rrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.rcard{background:var(--surf2);border:1px solid var(--border);border-radius:8px;
-  padding:10px 14px;position:relative;overflow:hidden}
+/* Timer ring */
+#timerRing{display:none;align-items:center;gap:10px}
+.ring-wrap{position:relative;width:44px;height:44px;flex-shrink:0}
+.ring-bg{fill:none;stroke:var(--surf2);stroke-width:5}
+.ring-fg{fill:none;stroke:var(--accent3);stroke-width:5;stroke-linecap:round;stroke-dasharray:113;stroke-dashoffset:113;transition:stroke-dashoffset .1s linear;transform:rotate(-90deg);transform-origin:50% 50%}
+.ring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent3)}
+.ring-side{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.ring-blinks{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent)}
+
+/* Results */
+.rrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rcard{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;position:relative;overflow:hidden;transition:all .3s}
 .rcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.rcard.L::before{background:var(--accent2)}
-.rcard.R::before{background:var(--accent3)}
+.rcard.L::before{background:var(--accent2)}.rcard.R::before{background:var(--accent3)}.rcard.B::before{background:var(--accent)}
+.rcard.pending{opacity:.4}
 .rlbl{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:4px}
-.rval{font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1}
+.rval{font-size:20px;font-weight:800;letter-spacing:-1px;line-height:1}
+.rval.L{color:var(--accent2)}.rval.R{color:var(--accent3)}.rval.B{color:var(--accent)}
 .runit{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:2px}
-.rval.pending{color:var(--dim);font-size:16px;font-weight:400}
-.rci{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:3px;line-height:1.5}
-.rci span{color:var(--accent)}
-.rn{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:1px}
+.rval.pending{color:var(--dim);font-size:14px;font-weight:400}
+.rn{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
 
-/* Recording progress bar */
-#recBar{display:none;flex-direction:column;gap:5px}
-.recbar-label{font-family:var(--mono);font-size:10px;color:var(--warn)}
-.recbar-track{height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
-.recbar-fill{height:100%;background:var(--warn);border-radius:2px;width:0%;transition:width .1s linear}
-.recbar-counts{font-family:var(--mono);font-size:10px;color:var(--dim)}
-
+/* Buttons */
 .btnrow{display:flex;gap:8px}
-.btn{flex:1;padding:12px;border-radius:8px;font-family:var(--mono);font-size:11px;
-  letter-spacing:.5px;cursor:pointer;transition:all .2s;border:1px solid;
-  -webkit-tap-highlight-color:transparent;background:transparent}
+.btn{flex:1;padding:12px;border-radius:8px;font-family:var(--mono);font-size:11px;letter-spacing:.5px;cursor:pointer;transition:all .2s;border:1px solid;-webkit-tap-highlight-color:transparent;background:transparent}
 .btn-primary{border-color:rgba(74,240,200,.4);color:var(--accent);background:rgba(74,240,200,.07)}
 .btn-primary:active{background:rgba(74,240,200,.18)}
 .btn-primary:disabled{opacity:.3;cursor:default;pointer-events:none}
 .btn-ghost{border-color:var(--border);color:var(--dim)}
 .btn-ghost:active{background:var(--surf2)}
-.btn-eye{border-color:rgba(123,143,255,.4);color:var(--accent2);background:rgba(123,143,255,.07)}
-.btn-eye:active{background:rgba(123,143,255,.18)}
-.btn-eye.R{border-color:rgba(255,107,157,.4);color:var(--accent3);background:rgba(255,107,157,.07)}
-.btn-eye.R:active{background:rgba(255,107,157,.18)}
-.btn-eye:disabled{opacity:.3;cursor:default;pointer-events:none}
-.btn-eye.recording{animation:pulse-btn .7s ease-in-out infinite alternate}
-@keyframes pulse-btn{from{opacity:.7}to{opacity:1}}
+.btn-warn{border-color:rgba(255,179,71,.45);color:var(--warn);background:rgba(255,179,71,.07)}
+.btn-warn:active{background:rgba(255,179,71,.18)}
+.btn-record{border-color:rgba(255,107,157,.5);color:var(--accent3);background:rgba(255,107,157,.08);font-size:13px;font-weight:700}
+.btn-record:active{background:rgba(255,107,157,.2)}
+.btn-record:disabled{opacity:.3;cursor:default;pointer-events:none}
+.btn-record.recording{border-color:rgba(255,107,157,.9);background:rgba(255,107,157,.18);animation:pulse-btn .7s ease-in-out infinite alternate;}
+@keyframes pulse-btn{from{opacity:.75}to{opacity:1}}
 .btn-export{border-color:rgba(74,240,200,.25);color:var(--accent);background:rgba(74,240,200,.04);font-size:10px}
 .btn-export:active{background:rgba(74,240,200,.12)}
 .btn-export:disabled{opacity:.3;cursor:default;pointer-events:none}
 
-.orient-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;
-  background:var(--surf2);border:1px solid var(--border);color:var(--dim);cursor:pointer;
-  -webkit-tap-highlight-color:transparent;transition:all .2s}
-.orient-btn.active{border-color:var(--warn);color:var(--warn);background:rgba(255,179,71,.08)}
-
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
-  background:rgba(74,240,200,.1);border:1px solid var(--accent);border-radius:8px;
-  padding:9px 16px;font-family:var(--mono);font-size:12px;color:var(--accent);
-  transition:transform .3s;white-space:nowrap;z-index:999;pointer-events:none}
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(74,240,200,.1);border:1px solid var(--accent);border-radius:8px;padding:9px 16px;font-family:var(--mono);font-size:12px;color:var(--accent);transition:transform .3s;white-space:nowrap;z-index:999;pointer-events:none}
 #toast.show{transform:translateX(-50%) translateY(0)}
+@media(max-width:400px){.rrow{grid-template-columns:1fr 1fr}.rrow .rcard:last-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
 <div id="app">
-  <header>
-    <div class="logo">Iris<span>Calib</span></div>
-    <span class="badge">v1</span>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--dim)">iris ruler</div>
-    <div class="pill"><div class="dot" id="dot"></div><span id="stxt">IDLE</span></div>
-  </header>
 
-  <div id="camwrap">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="overlay"></canvas>
-    <canvas id="tapCanvas"></canvas>
+<div id="ghostStrip"><div class="ghost-lane" id="ghostLane"></div></div>
+
+<header>
+  <div class="logo">Blinky <span>3000</span></div>
+  <span class="badge">v2</span>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--dim)">blink rate</div>
+  <div class="pill"><div class="dot" id="dot"></div><span id="stxt">IDLE</span></div>
+</header>
+
+<div id="camwrap">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+  <div id="blinkFlash"></div>
+  <div id="liveCount">0 blinks</div>
+</div>
+
+<div id="panel">
+
+  <div id="setupSection">
+    <div id="durRow">
+      <span class="dur-label">DURATION:</span>
+      <button class="dur-btn active" data-dur="10" onclick="setDur(10)">10s</button>
+      <button class="dur-btn" data-dur="15" onclick="setDur(15)">15s</button>
+      <button class="dur-btn" data-dur="30" onclick="setDur(30)">30s</button>
+      <button class="dur-btn" data-dur="60" onclick="setDur(60)">60s</button>
+      <input class="dur-custom" id="durCustom" type="number" min="5" max="60" placeholder="5-60">
+      <span class="dur-label">s</span>
+    </div>
+    <div id="eyeRow">
+      <span class="eye-lbl">EYE(S):</span>
+      <button class="eye-btn active-L" id="ebL" onclick="toggleEye('L')">LEFT</button>
+      <button class="eye-btn active-R" id="ebR" onclick="toggleEye('R')">RIGHT</button>
+      <button class="eye-btn active-B" id="ebB" onclick="toggleEye('B')">BOTH</button>
+    </div>
   </div>
 
-  <div id="panel">
+  <div id="instr">Tap <span>▶ START CAMERA</span> to begin.</div>
 
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <div class="steps">
-        <div class="step active" id="s1">1 CAL-L</div>
-        <span class="sep">›</span>
-        <div class="step" id="s2">2 REC-L</div>
-        <span class="sep">›</span>
-        <div class="step" id="s3">3 CAL-R</div>
-        <span class="sep">›</span>
-        <div class="step" id="s4">4 REC-R</div>
-      </div>
-      <div id="detbadge" class="none">NO SCALE</div>
+  <div id="calSection">
+    <div class="cal-phase-row">
+      <div class="cal-phase" id="calPhase1">1 EYES OPEN</div>
+      <span class="sep">›</span>
+      <div class="cal-phase" id="calPhase2">2 EYES CLOSED</div>
     </div>
-
-    <div id="instr">Tap <span>▶ START CAMERA</span> then follow the steps to calibrate with a credit card.</div>
-
-    <div id="tapProgress">
-      <div class="tpdot" id="td0"></div>
-      <div class="tpdot" id="td1"></div>
-      <div class="tpdot" id="td2"></div>
-      <div class="tpdot" id="td3"></div>
-      <span id="tapMsg">tap card edges</span>
-    </div>
-
-    <div id="scalebox">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--dim)">CARD ORIENT:</span>
-        <button class="orient-btn active" id="orientLand" onclick="setOrient('land')">━ LANDSCAPE 85.6mm</button>
-        <button class="orient-btn" id="orientPort" onclick="setOrient('port')">┃ PORTRAIT 53.98mm</button>
-      </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim)">
-        scale: <span id="scaleVal">—</span> mm/px &nbsp;|&nbsp; card: <span id="cardPxVal">—</span> px wide
-      </div>
-    </div>
-
-    <div class="rrow">
-      <div class="rcard L">
-        <div class="rlbl">LEFT IRIS</div>
-        <div class="rval pending" id="valL">—</div>
-        <div class="runit" id="unitL">not measured</div>
-        <div class="rci" id="ciL"></div>
-        <div class="rn" id="nL"></div>
-      </div>
-      <div class="rcard R">
-        <div class="rlbl">RIGHT IRIS</div>
-        <div class="rval pending" id="valR">—</div>
-        <div class="runit" id="unitR">not measured</div>
-        <div class="rci" id="ciR"></div>
-        <div class="rn" id="nR"></div>
-      </div>
-    </div>
-
-    <!-- Recording progress bar -->
-    <div id="recBar">
-      <div class="recbar-label" id="recLabel">● RECORDING LEFT…</div>
-      <div class="recbar-track"><div class="recbar-fill" id="recFill"></div></div>
-      <div class="recbar-counts" id="recCounts">0 / 30 samples</div>
-    </div>
-
-    <div class="btnrow" id="startRow">
-      <button class="btn btn-primary" id="startBtn">▶ START CAMERA</button>
-    </div>
-    <div class="btnrow" id="calibBtns" style="display:none">
-      <button class="btn btn-ghost" id="retryBtn">↺ CLEAR</button>
-      <button class="btn btn-primary" id="lockBtn" disabled>⊙ LOCK SCALE</button>
-    </div>
-    <div class="btnrow" id="eyeBtns" style="display:none">
-      <button class="btn btn-eye" id="snapL" disabled>⏺ RECORD LEFT</button>
-      <button class="btn btn-eye R" id="snapR" disabled style="display:none">⏺ RECORD RIGHT</button>
-    </div>
-    <div class="btnrow" id="exportRow" style="display:none">
-      <button class="btn btn-export" id="exportBtn">↓ EXPORT CSV</button>
-    </div>
-
-    <!-- Debug panel — shown after first face detected -->
-    <div id="debugPanel" style="display:none;font-family:var(--mono);font-size:9px;color:var(--dim);
-      background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;line-height:1.8">
-      <div style="color:var(--warn);margin-bottom:2px;font-size:10px">DEBUG</div>
-      <div id="dbg1">—</div>
-      <div id="dbg2">—</div>
-      <div id="dbg3">—</div>
-    </div>
-    <div class="btnrow" id="recalibRow" style="display:none">
-      <button class="btn btn-ghost" id="recalibLBtn" style="font-size:10px">↺ REDO CAL-L</button>
-      <button class="btn btn-ghost" id="recalibRBtn" style="font-size:10px;display:none">↺ REDO CAL-R</button>
-      <button class="btn btn-ghost" id="recalibAllBtn" style="font-size:10px">↺ RESTART</button>
-    </div>
-
   </div>
+  <div id="calBar">
+    <div class="calbar-label" id="calLabel">● CALIBRATING…</div>
+    <div class="calbar-track"><div class="calbar-fill" id="calBarFill"></div></div>
+  </div>
+
+  <div id="calResults">
+    <div class="cal-chip"><div class="cal-chip-lbl">OPEN EAR</div><div class="cal-chip-val" id="calOpen">—</div></div>
+    <div class="cal-chip"><div class="cal-chip-lbl">CLOSED EAR</div><div class="cal-chip-val" id="calClosed">—</div></div>
+    <div class="cal-chip"><div class="cal-chip-lbl">THRESHOLD</div><div class="cal-chip-val" id="calThresh">—</div></div>
+    <span class="cal-recal" onclick="reCalibrate()">↺ recalibrate</span>
+  </div>
+
+  <div id="queueRow" style="display:none"></div>
+
+  <div id="timerRing">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 40 40" width="44" height="44">
+        <circle class="ring-bg" cx="20" cy="20" r="18"/>
+        <circle class="ring-fg" id="ringFg" cx="20" cy="20" r="18"/>
+      </svg>
+      <div class="ring-txt" id="ringTxt">—</div>
+    </div>
+    <div>
+      <div class="ring-side" id="ringSide">—</div>
+      <div class="ring-blinks" id="ringBlinks">— blinks</div>
+    </div>
+  </div>
+
+  <div class="rrow" id="resultsRow">
+    <div class="rcard L pending" id="cardL"><div class="rlbl">LEFT EYE</div><div class="rval pending" id="valL">—</div><div class="runit" id="unitL">not run</div><div class="rn" id="nL"></div></div>
+    <div class="rcard R pending" id="cardR"><div class="rlbl">RIGHT EYE</div><div class="rval pending" id="valR">—</div><div class="runit" id="unitR">not run</div><div class="rn" id="nR"></div></div>
+    <div class="rcard B pending" id="cardB"><div class="rlbl">BOTH EYES</div><div class="rval pending" id="valB">—</div><div class="runit" id="unitB">not run</div><div class="rn" id="nB"></div></div>
+  </div>
+
+  <div class="btnrow" id="startRow">
+    <button class="btn btn-primary" id="startBtn">▶ START CAMERA</button>
+  </div>
+
+  <div class="btnrow" id="calBtnRow" style="display:none">
+    <button class="btn btn-ghost" onclick="skipCalibration()">SKIP CAL</button>
+    <button class="btn btn-warn" id="calStartBtn">● BEGIN CALIBRATION</button>
+  </div>
+
+  <div class="btnrow" id="recordRow" style="display:none">
+    <button class="btn btn-ghost" id="resetBtn" style="flex:0 0 auto;padding:12px 16px">↺</button>
+    <button class="btn btn-record" id="recordBtn" disabled>⏺ RECORD</button>
+  </div>
+
+  <div class="btnrow" id="exportRow" style="display:none">
+    <button class="btn btn-export" id="exportBtn">↓ EXPORT CSV</button>
+    <button class="btn btn-ghost" id="restartBtn" style="font-size:10px">↺ NEW SESSION</button>
+  </div>
+
+</div>
 </div>
 <div id="toast"></div>
 
@@ -252,521 +255,518 @@ canvas#tapCanvas{position:absolute;inset:0;width:100%;height:100%;z-index:4;touc
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.17.0/dist/tf-backend-webgl.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js" crossorigin="anonymous"></script>
 <script>
-const CARD_MM_LAND = 85.6;
-const CARD_MM_PORT = 53.98;
-const MIN_TAPS = 2;
-const MAX_TAPS = 4;
-const REC_SECS = 4;          // seconds to record per eye
+// ─────────────────────────────────────────────────────────────────────────────
+// Blinky 3000  v2 — Voluntary Blink Rate Tester
+//
+// DETECTION PIPELINE
+//   Step 1 — Calibration (one-time at startup):
+//     Phase A  4s: eyes fully open  → collect open-EAR baseline per eye
+//     Phase B  2s: eyes gently shut → collect closed-EAR minimum per eye
+//     threshold  = closedEAR + 50% × (openEAR − closedEAR)
+//     hysteresis = closedEAR + 70% × (openEAR − closedEAR)   [re-open gate]
+//     → threshold and hysteresis adapt to each individual participant
+//
+//   Step 2 — Trough detection during trials:
+//     Each frame feeds a small state machine per eye:
+//       OPEN       : waiting for EAR to drop below threshold
+//       DESCENDING : EAR crossed threshold, tracking the minimum
+//       RISING     : EAR started climbing (Δ > 0.005) → FIRE blink event
+//                    then wait for EAR ≥ hysteresis before resetting to OPEN
+//     Fires exactly once per blink, even for shallow or asymmetric blinks.
+//     For the BOTH trial: uses the mean of the two eyes' EAR values.
+//
+// L/R MIRROR CORRECTION
+//   The <video> element has CSS scaleX(-1) (mirror effect).
+//   MediaPipe returns landmarks in un-mirrored video coordinates.
+//   Therefore, what the subject perceives as their LEFT eye appears on the
+//   RIGHT side of the raw landmark space, and vice-versa.
+//   Fix: swap the label→landmark binding (NOT the indices):
+//     Display "LEFT EYE"  → uses MediaPipe anatomical-RIGHT landmarks
+//     Display "RIGHT EYE" → uses MediaPipe anatomical-LEFT  landmarks
+// ─────────────────────────────────────────────────────────────────────────────
 
-let cardMm = CARD_MM_LAND;   // updated by orient toggle
+const $ = id => document.getElementById(id);
+const toast = msg => { const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); };
+const setStatus = (txt,mode='') => { $('stxt').textContent=txt; $('dot').className='dot'+(mode?' '+mode:''); };
 
-// Workflow phases: idle → calL → recL → calR → recR → done
-// 'calL'/'calR' = tapping card; 'recL'/'recR' = recording iris frames
-let phase = 'idle';
+// ── EAR landmark indices ──────────────────────────────────────────────────────
+// mpR = MediaPipe anatomical right = displayed on LEFT of mirrored video
+// mpL = MediaPipe anatomical left  = displayed on RIGHT of mirrored video
+const EAR_IDX = {
+  mpR: { v1:[386,374], v2:[385,380], h:[362,263] },
+  mpL: { v1:[159,145], v2:[158,153], h:[133,33]  },
+};
+const EYE_PTS = {
+  mpR: [263,362,386,374,385,380,387,373,388,390,466],  // outline for display-left
+  mpL: [33,133,159,145,158,153,160,144,161,163,246],    // outline for display-right
+};
 
+function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+function computeEAR(kps,key){
+  const idx=EAR_IDX[key];
+  const v1=dist(kps[idx.v1[0]],kps[idx.v1[1]]);
+  const v2=dist(kps[idx.v2[0]],kps[idx.v2[1]]);
+  const h =dist(kps[idx.h[0]], kps[idx.h[1]]);
+  if(h<0.5) return 1;
+  return (v1+v2)/(2*h);
+}
+
+// ── Trough detector ───────────────────────────────────────────────────────────
+function makeTrough(){ return {state:'OPEN',minEAR:1,prevEAR:1}; }
+function updateTrough(d,ear,thresh,hyst){
+  let fired=false;
+  if(d.state==='OPEN'){
+    if(ear<thresh){ d.state='DESCENDING'; d.minEAR=ear; }
+  } else if(d.state==='DESCENDING'){
+    if(ear<d.minEAR) d.minEAR=ear;
+    if(ear>d.prevEAR+0.005){ d.state='RISING'; fired=true; }
+  } else if(d.state==='RISING'){
+    if(ear>=hyst){ d.state='OPEN'; d.minEAR=1; }
+  }
+  d.prevEAR=ear;
+  return fired;
+}
+
+// ── Calibration state ─────────────────────────────────────────────────────────
+const CAL = {
+  phase:'none',        // 'none'|'waiting'|'open'|'closed'|'done'
+  collecting:false,
+  openSamples:[], closedSamples:[],
+  openEAR:null, closedEAR:null, threshold:null, hysteresis:null,
+  start:null,
+  OPEN_SECS:4, CLOSED_SECS:2,
+};
+function computeCalThresholds(){
+  const open   = CAL.openSamples.reduce((a,b)=>a+b,0)/CAL.openSamples.length;
+  const closed = CAL.closedSamples.reduce((a,b)=>a+b,0)/CAL.closedSamples.length;
+  const range  = Math.max(open-closed, 0.04);
+  CAL.openEAR=open; CAL.closedEAR=closed;
+  CAL.threshold  = closed+range*0.50;
+  CAL.hysteresis = closed+range*0.70;
+}
+
+// ── App state ─────────────────────────────────────────────────────────────────
+let trialDur=10;
+let activeEyes=new Set(['L','R','B']);
 const S = {
   running:false, detector:null,
-  // per-eye scales (separate calibrations)
-  mmPerPxL:null, mmPerPxR:null,
-  taps:[],
-  liveIrisL:null, liveIrisR:null,
-  irisL:null, irisR:null,
-  // recording state
-  recording: null,       // null | 'L' | 'R'
-  recStart: null,        // Date.now() when recording started
-  samplesL: [],
-  samplesR: [],
-  statsL: null,
-  statsR: null,
-  allRaw: [],
+  trialQueue:[], trialIdx:-1, currentTrial:null,
+  trialActive:false, trialStart:null,
+  earDisplayL:1, earDisplayR:1,
+  troughL:makeTrough(), troughR:makeTrough(), troughB:makeTrough(),
+  blinkTimes:{L:[],R:[],B:[]}, blinkCounts:{L:0,R:0,B:0},
+  resultsHz:{L:null,R:null,B:null}, sessionDur:{L:0,R:0,B:0},
+  rawEvents:[], sessionId:null,
 };
 
-function setOrient(mode){
-  cardMm = mode==='port' ? CARD_MM_PORT : CARD_MM_LAND;
-  $('orientLand').classList.toggle('active', mode==='land');
-  $('orientPort').classList.toggle('active', mode==='port');
-  // recompute displayed scale if taps already placed
-  if(S.taps.length >= MIN_TAPS){
-    const xs = S.taps.map(t=>t.cx);
-    const pxW = Math.max(...xs)-Math.min(...xs);
-    if(pxW>10){
-      $('scaleVal').textContent = (cardMm/pxW).toFixed(4);
-      $('cardPxVal').textContent = Math.round(pxW);
-    }
-  }
+// ── Duration / eye controls ───────────────────────────────────────────────────
+function setDur(s){
+  trialDur=s;
+  document.querySelectorAll('.dur-btn').forEach(b=>b.classList.toggle('active',+b.dataset.dur===s));
+  $('durCustom').value='';
 }
-
-const $  = id => document.getElementById(id);
-const video    = $('video');
-const overlay  = $('overlay');
-const tapCanvas = $('tapCanvas');
-const octx = overlay.getContext('2d');
-const tctx = tapCanvas.getContext('2d');
-
-const toast = msg => {
-  const t=$('toast'); t.textContent=msg;
-  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800);
-};
-const setStatus = (txt,mode='') => {
-  $('stxt').textContent=txt;
-  $('dot').className='dot'+(mode?' '+mode:'');
-};
-
-function resizeCanvases(){
-  const w=$('camwrap').clientWidth, h=$('camwrap').clientHeight;
-  [overlay,tapCanvas].forEach(c=>{ if(c.width!==w||c.height!==h){c.width=w;c.height=h;} });
-}
-
-// ── coordinate helpers ────────────────────────────────────────────────────────
-// video px → canvas CSS px (for drawing only)
-function vidToCanvas(vx, vy){
-  const W=overlay.width, H=overlay.height;
-  const vw=video.videoWidth||1280, vh=video.videoHeight||720;
-  const sc=Math.max(W/vw, H/vh);
-  const offX=(W-vw*sc)/2, offY=(H-vh*sc)/2;
-  return { x: W-(vx*sc+offX), y: vy*sc+offY };  // mirror x
-}
-
-// canvas CSS px → video px (for taps)
-function canvasToVid(cx, cy){
-  const W=overlay.width, H=overlay.height;
-  const vw=video.videoWidth||1280, vh=video.videoHeight||720;
-  const sc=Math.max(W/vw, H/vh);
-  const offX=(W-vw*sc)/2, offY=(H-vh*sc)/2;
-  return { vx:(W-cx-offX)/sc, vy:(cy-offY)/sc };
-}
-
-// ── tap handling — store in VIDEO pixels ──────────────────────────────────────
-function handleTap(e){
-  if(phase!=='calL' && phase!=='calR') return;
-  e.preventDefault();
-  const r=tapCanvas.getBoundingClientRect();
-  const src=e.touches?e.touches[0]:e;
-  const cx=src.clientX-r.left, cy=src.clientY-r.top;
-  const {vx,vy}=canvasToVid(cx,cy);
-  S.taps.push({vx, cx, cy});   // vx=video px for scale; cx/cy for drawing
-  if(S.taps.length>MAX_TAPS) S.taps.shift();
-  updateTapUI();
-}
-tapCanvas.addEventListener('touchstart',handleTap,{passive:false});
-tapCanvas.addEventListener('pointerdown',e=>{ if(e.pointerType==='touch')return; handleTap(e); });
-
-function updateTapUI(){
-  const n=S.taps.length;
-  for(let i=0;i<MAX_TAPS;i++) $('td'+i).classList.toggle('filled',i<n);
-  $('tapMsg').textContent = n<MIN_TAPS
-    ? `tap ${MIN_TAPS-n} more point${MIN_TAPS-n!==1?'s':''} on the card`
-    : n<MAX_TAPS ? `${n} taps — add more or lock` : `${n} taps — ready to lock`;
-  if(n>=MIN_TAPS){
-    $('lockBtn').disabled=false;
-    const xs=S.taps.map(t=>t.vx);
-    const vidW=Math.max(...xs)-Math.min(...xs);   // VIDEO px span
-    if(vidW>5){
-      $('scaleVal').textContent=(cardMm/vidW).toFixed(4);
-      $('cardPxVal').textContent=Math.round(vidW);
-    }
-  }
-  drawTapMarkers();
-}
-
-function drawTapMarkers(){
-  tctx.clearRect(0,0,tapCanvas.width,tapCanvas.height);
-  if(!S.taps.length) return;
-  S.taps.forEach((t,i)=>{
-    tctx.beginPath(); tctx.arc(t.cx,t.cy,13,0,Math.PI*2);
-    tctx.fillStyle='rgba(255,179,71,.18)'; tctx.fill();
-    tctx.strokeStyle='#ffb347'; tctx.lineWidth=2; tctx.stroke();
-    tctx.fillStyle='#ffb347'; tctx.font='bold 10px Space Mono,monospace';
-    tctx.textAlign='center'; tctx.textBaseline='middle';
-    tctx.fillText(i+1,t.cx,t.cy);
+$('durCustom').addEventListener('change',()=>{
+  const v=Math.max(5,Math.min(60,parseInt($('durCustom').value)||10));
+  $('durCustom').value=v; trialDur=v;
+  document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));
+});
+function toggleEye(e){
+  if(activeEyes.has(e)&&activeEyes.size===1){toast('Keep at least one condition');return;}
+  if(activeEyes.has(e)) activeEyes.delete(e); else activeEyes.add(e);
+  [['L','ebL'],['R','ebR'],['B','ebB']].forEach(([k,id])=>{
+    $(''+id).className='eye-btn'+(activeEyes.has(k)?' active-'+k:'');
   });
-  if(S.taps.length>=2){
-    const sorted=[...S.taps].sort((a,b)=>a.cx-b.cx);
-    const x0=sorted[0].cx, x1=sorted[sorted.length-1].cx;
-    const y=(sorted[0].cy+sorted[sorted.length-1].cy)/2;
-    tctx.beginPath(); tctx.moveTo(x0,y); tctx.lineTo(x1,y);
-    tctx.strokeStyle='rgba(255,179,71,.5)'; tctx.lineWidth=1.5;
-    tctx.setLineDash([5,4]); tctx.stroke(); tctx.setLineDash([]);
-    const vidW=Math.abs(sorted[sorted.length-1].vx-sorted[0].vx);
-    tctx.fillStyle='#ffb347'; tctx.font='10px Space Mono,monospace';
-    tctx.textAlign='center'; tctx.textBaseline='bottom';
-    tctx.fillText(`${Math.round(vidW)}vid-px → ${(cardMm/vidW).toFixed(3)}mm/px`,(x0+x1)/2,y-8);
+}
+
+// ── Calibration UI flow ───────────────────────────────────────────────────────
+function enterCalWait(){
+  CAL.phase='waiting'; CAL.collecting=false;
+  $('calSection').style.display='flex';
+  $('calBar').style.display='none';
+  $('calBtnRow').style.display='flex';
+  $('recordRow').style.display='none';
+  $('calPhase1').className='cal-phase';
+  $('calPhase2').className='cal-phase';
+  $('instr').innerHTML=`<span>CALIBRATION</span> — adapts detection to your EAR range. Press <span class="w">● BEGIN</span>, then follow instructions.`;
+  setStatus('CAL READY','warn');
+}
+
+$('calStartBtn').onclick=function(){
+  CAL.phase='open'; CAL.collecting=true;
+  CAL.openSamples=[]; CAL.closedSamples=[];
+  CAL.start=Date.now();
+  $('calBtnRow').style.display='none';
+  $('calBar').style.display='flex';
+  $('calBarFill').style.width='0%';
+  $('calPhase1').className='cal-phase active';
+  $('calPhase2').className='cal-phase';
+  $('calLabel').textContent='● PHASE 1 — Eyes OPEN wide, look at camera…';
+  $('instr').innerHTML=`<span>PHASE 1/2</span> — Eyes <span>OPEN</span> wide, look straight at camera. Hold <span>${CAL.OPEN_SECS}s</span>.`;
+  setStatus('CAL OPEN','warn');
+};
+
+function skipCalibration(){
+  CAL.openEAR=0.28; CAL.closedEAR=0.10;
+  CAL.threshold=0.19; CAL.hysteresis=0.22;
+  CAL.phase='done'; CAL.collecting=false;
+  finishCal('Skipped — using defaults (open=0.28, thresh=0.19)');
+}
+
+function reCalibrate(){
+  $('calResults').style.display='none';
+  $('recordRow').style.display='none';
+  $('exportRow').style.display='none';
+  $('queueRow').style.display='none';
+  enterCalWait();
+}
+
+function finishCal(msg){
+  $('calSection').style.display='none';
+  $('calBar').style.display='none';
+  $('calBtnRow').style.display='none';
+  $('calResults').style.display='flex';
+  $('calOpen').textContent   = CAL.openEAR.toFixed(3);
+  $('calClosed').textContent = CAL.closedEAR.toFixed(3);
+  $('calThresh').textContent = CAL.threshold.toFixed(3);
+  $('recordRow').style.display='flex';
+  $('setupSection').style.display='';
+  setStatus('READY','on');
+  toast(msg);
+  $('instr').innerHTML=`Cal ✓  open=<span>${CAL.openEAR.toFixed(3)}</span>  closed=<span>${CAL.closedEAR.toFixed(3)}</span>  thresh=<span>${CAL.threshold.toFixed(3)}</span>`;
+  buildQueue(); nextTrial();
+}
+
+// ── Queue / trials ────────────────────────────────────────────────────────────
+const EYE_LABEL={L:'LEFT EYE',R:'RIGHT EYE',B:'BOTH EYES'};
+function buildQueue(){
+  S.trialQueue=['L','R','B'].filter(e=>activeEyes.has(e));
+  S.trialIdx=-1; S.currentTrial=null; renderQueue();
+}
+function renderQueue(){
+  const row=$('queueRow'); row.innerHTML='';
+  S.trialQueue.forEach((t,i)=>{
+    if(i>0){const s=document.createElement('span');s.className='sep';s.textContent='›';row.appendChild(s);}
+    const tag=document.createElement('div');
+    tag.className='qtag'; tag.id='qtag_'+t; tag.textContent=EYE_LABEL[t];
+    if(i<S.trialIdx) tag.classList.add('done');
+    else if(i===S.trialIdx) tag.classList.add('running');
+    else if(i===S.trialIdx+1) tag.classList.add('next');
+    row.appendChild(tag);
+  });
+  row.style.display='flex';
+}
+function nextTrial(){
+  S.trialIdx++;
+  if(S.trialIdx>=S.trialQueue.length){endSession();return;}
+  S.currentTrial=S.trialQueue[S.trialIdx];
+  renderQueue();
+  const es=EYE_LABEL[S.currentTrial];
+  $('instr').innerHTML=`Trial <span>${S.trialIdx+1}/${S.trialQueue.length}</span>: <span>${es}</span> — blink naturally. Press <span class="w">⏺ RECORD</span> when ready.`;
+  $('recordBtn').disabled=false;
+  $('recordBtn').textContent=`⏺ RECORD — ${es}`;
+  $('recordBtn').classList.remove('recording');
+}
+function startTrial(){
+  S.trialActive=true; S.trialStart=Date.now();
+  const t=S.currentTrial;
+  S.blinkTimes[t]=[]; S.blinkCounts[t]=0;
+  S.troughL=makeTrough(); S.troughR=makeTrough(); S.troughB=makeTrough();
+  $('recordBtn').textContent='⏹ STOP'; $('recordBtn').classList.add('recording');
+  $('timerRing').style.display='flex';
+  $('liveCount').style.display=''; $('liveCount').textContent='0 blinks';
+  $('ringSide').textContent=EYE_LABEL[t]; $('ringBlinks').textContent='0 blinks';
+  setStatus('RECORDING','rec');
+  $('setupSection').style.display='none';
+  toast(`Trial ${S.trialIdx+1}: ${EYE_LABEL[t]} — blink naturally!`);
+}
+function stopTrial(manual=false){
+  if(!S.trialActive) return;
+  S.trialActive=false;
+  const t=S.currentTrial;
+  const elapsed=(Date.now()-S.trialStart)/1000;
+  const dur=manual?elapsed:trialDur;
+  const n=S.blinkCounts[t];
+  const hz=n/Math.max(dur,0.1);
+  S.resultsHz[t]=hz; S.sessionDur[t]=dur;
+  $('val'+t).textContent=hz.toFixed(2); $('val'+t).className='rval '+t;
+  $('unit'+t).textContent='blinks/s (Hz)'; $('n'+t).textContent=`${n} blinks / ${dur.toFixed(1)}s`;
+  $('card'+t).classList.remove('pending');
+  $('recordBtn').classList.remove('recording');
+  $('timerRing').style.display='none'; $('liveCount').style.display='none';
+  setStatus('IDLE','');
+  if(!manual) toast(`${EYE_LABEL[t]}: ${n} blinks / ${dur.toFixed(1)}s = ${hz.toFixed(2)} Hz`);
+  setTimeout(()=>nextTrial(),800);
+}
+function endSession(){
+  $('recordRow').style.display='none'; $('exportRow').style.display='flex';
+  $('queueRow').style.display='none';
+  $('instr').innerHTML=`Session complete — <span>${S.trialQueue.length}</span> trial(s). Export or start new session.`;
+  setStatus('DONE','on'); toast('All trials complete!');
+}
+function resetToSetup(){
+  if(S.trialActive&&!confirm('Stop current trial and reset?')) return;
+  if(S.trialActive) stopTrial(true);
+  S.trialIdx=-1;S.currentTrial=null;S.trialActive=false;
+  S.blinkTimes={L:[],R:[],B:[]};S.blinkCounts={L:0,R:0,B:0};
+  S.resultsHz={L:null,R:null,B:null};S.sessionDur={L:0,R:0,B:0};
+  S.rawEvents=[];S.sessionId=Date.now();
+  ['L','R','B'].forEach(t=>{$('val'+t).textContent='—';$('val'+t).className='rval pending';$('unit'+t).textContent='not run';$('n'+t).textContent='';$('card'+t).classList.add('pending');});
+  $('timerRing').style.display='none';$('liveCount').style.display='none';
+  $('recordBtn').classList.remove('recording');$('exportRow').style.display='none';$('queueRow').style.display='none';
+  if(CAL.phase==='done'){
+    $('recordRow').style.display='flex';$('setupSection').style.display='';
+    $('calResults').style.display='flex';
+    setStatus('READY','on');buildQueue();nextTrial();
+  } else {
+    enterCalWait();
   }
 }
 
-// ── iris helper ───────────────────────────────────────────────────────────────
-function irisRadius(kps,ci,es){
-  let s=0;
-  for(let i=es;i<es+4;i++) s+=Math.hypot(kps[i].x-kps[ci].x,kps[i].y-kps[ci].y);
-  return s/4;
-}
-
-// ── camera + model ────────────────────────────────────────────────────────────
+// ── Camera + model ────────────────────────────────────────────────────────────
 async function startCamera(){
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}}
-  });
-  video.srcObject = stream;
-  return new Promise(res=>{ video.onloadedmetadata=()=>{ video.play(); res(); }; });
+  const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}}});
+  $('video').srcObject=s;
+  return new Promise(res=>{$('video').onloadedmetadata=()=>{$('video').play();res();};});
 }
 async function loadModel(){
-  S.detector = await faceLandmarksDetection.createDetector(
+  S.detector=await faceLandmarksDetection.createDetector(
     faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-    { runtime:'mediapipe',
-      solutionPath:'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619',
-      refineLandmarks:true, maxFaces:1 }
+    {runtime:'mediapipe',solutionPath:'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619',refineLandmarks:true,maxFaces:1}
   );
 }
 
-// ── render loop ───────────────────────────────────────────────────────────────
+// ── Render loop ───────────────────────────────────────────────────────────────
+function resizeCanvas(){
+  const w=$('camwrap').clientWidth,h=$('camwrap').clientHeight,c=$('overlay');
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+}
+function vToC(vx,vy,W,H,vw,vh){
+  const sc=Math.max(W/vw,H/vh),offX=(W-vw*sc)/2,offY=(H-vh*sc)/2;
+  return{cx:W-(vx*sc+offX),cy:vy*sc+offY};
+}
+
 async function loop(){
-  if(!S.running){ requestAnimationFrame(loop); return; }
-  if(video.readyState<2){ requestAnimationFrame(loop); return; }
+  if(!S.running){requestAnimationFrame(loop);return;}
+  const video=$('video');
+  if(video.readyState<2){requestAnimationFrame(loop);return;}
+  resizeCanvas();
+  const c=$('overlay'),ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  if(!S.detector){requestAnimationFrame(loop);return;}
 
-  resizeCanvases();
-  octx.clearRect(0,0,overlay.width,overlay.height);
+  try{
+    const faces=await S.detector.estimateFaces(video,{flipHorizontal:false});
+    if(faces.length){
+      let kps=faces[0].keypoints;
+      const vw=video.videoWidth||1280,vh=video.videoHeight||720;
+      if(Math.max(...kps.slice(0,10).map(p=>p.x))<2) kps=kps.map(p=>({x:p.x*vw,y:p.y*vh}));
 
-  const inMeasure = (phase==='recL'||phase==='recR') && S.detector;
-  if(inMeasure){
-    try{
-      const faces = await S.detector.estimateFaces(video,{flipHorizontal:false});
-      if(faces.length){
-        let kps = faces[0].keypoints;
-        const vw=video.videoWidth||1280, vh=video.videoHeight||720;
+      if(kps.length>=478){
+        // Compute EAR for each display-side
+        // displayL = subject's left on mirrored screen = MediaPipe anatomical RIGHT = mpR
+        // displayR = subject's right on mirrored screen = MediaPipe anatomical LEFT = mpL
+        const earDL=computeEAR(kps,'mpR');  // display-left eye EAR
+        const earDR=computeEAR(kps,'mpL');  // display-right eye EAR
+        S.earDisplayL=earDL; S.earDisplayR=earDR;
+        const now=Date.now();
 
-        // Check coordinate range BEFORE normalization
-        const rawX468 = faces[0].keypoints[468]?.x ?? 0;
-        const maxCoord = Math.max(...faces[0].keypoints.slice(0,10).map(p=>Math.max(p.x,p.y)));
-
-        // Normalize: MediaPipe via tfjs sometimes returns 0-1, sometimes pixel coords
-        const maxX = Math.max(...kps.slice(0,10).map(p=>p.x));
-        if(maxX < 2){
-          kps = kps.map(p=>({x:p.x*vw, y:p.y*vh}));
-        }
-
-        if(kps.length>=478){
-          // kp468 = subject's LEFT iris, kp473 = subject's RIGHT iris (MediaPipe convention)
-          // Video is CSS mirrored (scaleX:-1), so subject-left appears screen-RIGHT.
-          // → screen-LEFT card = subject's RIGHT = kp473
-          // → screen-RIGHT card = subject's LEFT = kp468
-          const kp468Rad = irisRadius(kps,468,469);  // subject-L / screen-R
-          const kp473Rad = irisRadius(kps,473,474);  // subject-R / screen-L
-          const screenLMm = S.mmPerPxL ? kp473Rad*2*S.mmPerPxL : null;
-          const screenRMm = S.mmPerPxR ? kp468Rad*2*S.mmPerPxR : null;
-
-          if(screenLMm) S.liveIrisL=screenLMm;
-          if(screenRMm) S.liveIrisR=screenRMm;
-
-          // Pose quality check — both radii similar means face is straight-on
-          const radRatio = (kp473Rad>0&&kp468Rad>0) ? Math.max(kp468Rad,kp473Rad)/Math.min(kp468Rad,kp473Rad) : 99;
-          const faceStraight = radRatio < 1.20;
-
-          // Debug — freeze finalized values, only show live for active side
-          $('debugPanel').style.display='';
-          $('dbg1').textContent=`video:${vw}×${vh}  canvas:${overlay.width}×${overlay.height}  raw468x:${rawX468.toFixed(1)}`;
-          $('dbg2').textContent=`kp473(scrL):${kp473Rad.toFixed(2)}px  kp468(scrR):${kp468Rad.toFixed(2)}px  ratio:${radRatio<99?radRatio.toFixed(2):'—'}${radRatio<1.2?' ✓':' ✗ turn straight'}`;
-          const showL = S.statsL ? S.statsL.mean.toFixed(2)+'✓' : (screenLMm?screenLMm.toFixed(2):'—');
-          const showR = S.statsR ? S.statsR.mean.toFixed(2)+'✓' : (screenRMm?screenRMm.toFixed(2):'—');
-          $('dbg3').textContent=`scL:${S.mmPerPxL?S.mmPerPxL.toFixed(5):'—'} scrL:${showL}  scR:${S.mmPerPxR?S.mmPerPxR.toFixed(5):'—'} scrR:${showR}`;
-
-          // Draw circles
-          const W=overlay.width, H=overlay.height;
-          const drawSc=Math.max(W/vw, H/vh);
-          // [landmark-ci, color, radVid, mm-value, screen-side-key]
-          [[473,'#7b8fff',kp473Rad,screenLMm,'L'],[468,'#ff6b9d',kp468Rad,screenRMm,'R']]
-          .forEach(([ci,col,radVid,mm,scr])=>{
-            if(!mm) return;
-            const {x:cx,y:cy}=vidToCanvas(kps[ci].x,kps[ci].y);
-            const dr=radVid*drawSc;
-            const isActive=S.recording===scr;
-            octx.beginPath(); octx.arc(cx,cy,dr,0,Math.PI*2);
-            octx.strokeStyle=col; octx.lineWidth=isActive?3:1.5;
-            octx.globalAlpha=isActive?1:0.5; octx.stroke(); octx.globalAlpha=1;
-            octx.beginPath(); octx.arc(cx,cy,3,0,Math.PI*2);
-            octx.fillStyle=col; octx.fill();
-            octx.fillStyle=col; octx.font='bold 11px Space Mono,monospace';
-            octx.textAlign='center'; octx.textBaseline='bottom';
-            octx.fillText(`${mm.toFixed(2)}mm`,cx,cy-dr-4);
-          });
-
-          // Live card updates — only if not yet finalized
-          if(screenLMm&&!S.statsL){ $('valL').textContent=screenLMm.toFixed(2); $('valL').className='rval'; $('unitL').textContent='mm  live'; }
-          if(screenRMm&&!S.statsR){ $('valR').textContent=screenRMm.toFixed(2); $('valR').className='rval'; $('unitR').textContent='mm  live'; }
-
-          if(S.recording&&S.recStart){
-            const now=Date.now(), elapsed=now-S.recStart;
-            updateRecBar(S.recording,Math.min(1,elapsed/(REC_SECS*1000)));
-            if(faceStraight){
-              // Only accumulate frames where face is straight-on
-              if(S.recording==='L'&&screenLMm){ S.samplesL.push(screenLMm); S.allRaw.push({t:now,side:'L',mm:screenLMm,scale:S.mmPerPxL}); }
-              else if(S.recording==='R'&&screenRMm){ S.samplesR.push(screenRMm); S.allRaw.push({t:now,side:'R',mm:screenRMm,scale:S.mmPerPxR}); }
+        // ── Calibration sample collection ─────────────────────────────────────
+        if(CAL.collecting){
+          const elapsed=(now-CAL.start)/1000;
+          if(CAL.phase==='open'){
+            const pct=Math.min(1,elapsed/CAL.OPEN_SECS);
+            $('calBarFill').style.width=(pct*100).toFixed(1)+'%';
+            // Collect both eyes' EAR to average — person may favor one side
+            CAL.openSamples.push(earDL,earDR);
+            if(elapsed>=CAL.OPEN_SECS){
+              CAL.phase='closed'; CAL.start=now;
+              // Trim to last ~60 samples (≈1s) for stability
+              CAL.openSamples=CAL.openSamples.slice(-60);
+              $('calPhase1').className='cal-phase done';
+              $('calPhase2').className='cal-phase active';
+              $('calLabel').textContent='● PHASE 2 — Gently CLOSE your eyes…';
+              $('instr').innerHTML=`<span>PHASE 2/2</span> — Gently <span>CLOSE</span> eyes. Hold <span>${CAL.CLOSED_SECS}s</span>.`;
+              setStatus('CAL CLOSED','warn');
             }
-            // Status feedback
-            if(!faceStraight){
-              setStatus('TURN STRAIGHT','warn');
-            } else {
-              setStatus('TRACKING','on');
+          } else if(CAL.phase==='closed'){
+            const pct=Math.min(1,elapsed/CAL.CLOSED_SECS);
+            $('calBarFill').style.width=((0.5+pct*0.5)*100).toFixed(1)+'%';
+            CAL.closedSamples.push(earDL,earDR);
+            if(elapsed>=CAL.CLOSED_SECS){
+              CAL.collecting=false;
+              $('calPhase2').className='cal-phase done';
+              computeCalThresholds();
+              CAL.phase='done';
+              finishCal(`Calibrated! open=${CAL.openEAR.toFixed(3)} closed=${CAL.closedEAR.toFixed(3)} thresh=${CAL.threshold.toFixed(3)}`);
             }
-            if(elapsed>=REC_SECS*1000) finalizeEye(S.recording);
-          } else {
-            setStatus(faceStraight?'TRACKING':'TURN STRAIGHT', faceStraight?'on':'warn');
           }
+          drawEyeOverlay(ctx,kps,c.width,c.height,vw,vh,null);
+          setStatus(CAL.phase==='open'?'CAL OPEN':'CAL CLOSED','warn');
+          requestAnimationFrame(loop); return;
         }
-      }else{ setStatus('NO FACE','warn'); }
-    }catch(e){ console.warn('[IrisCalib] loop error:',e); }
-  }
+
+        // ── Trial blink detection ──────────────────────────────────────────────
+        if(S.trialActive && S.currentTrial && CAL.threshold!==null){
+          const t=S.currentTrial;
+          const elapsed=(now-S.trialStart)/1000;
+          // Timer ring
+          $('ringFg').style.strokeDashoffset=((1-Math.min(1,elapsed/trialDur))*113).toFixed(2);
+          const rem=Math.max(0,trialDur-elapsed);
+          $('ringTxt').textContent=rem<=9.5?rem.toFixed(1)+'s':Math.ceil(rem)+'s';
+
+          let blinkDetected=false;
+
+          // Each trial uses exactly ONE dedicated detector. No passive advances —
+          // advancing an unused detector contaminates its state for later trials.
+          if(t==='L'){
+            // Dedicated detector for display-left eye only
+            blinkDetected=updateTrough(S.troughL,earDL,CAL.threshold,CAL.hysteresis);
+          } else if(t==='R'){
+            // Dedicated detector for display-right eye only
+            blinkDetected=updateTrough(S.troughR,earDR,CAL.threshold,CAL.hysteresis);
+          } else if(t==='B'){
+            // Dedicated detector using mean of both eyes — one event per bilateral blink
+            blinkDetected=updateTrough(S.troughB,(earDL+earDR)/2,CAL.threshold,CAL.hysteresis);
+          }
+
+          if(blinkDetected){
+            S.blinkCounts[t]++;
+            S.blinkTimes[t].push(now);
+            S.rawEvents.push({t:now,elapsed_ms:Math.round(elapsed*1000),trial:t,blink_n:S.blinkCounts[t],earDL:earDL.toFixed(4),earDR:earDR.toFixed(4)});
+            $('blinkFlash').classList.add('flash');
+            setTimeout(()=>$('blinkFlash').classList.remove('flash'),80);
+            if(window._scareGhosts) window._scareGhosts();
+            $('liveCount').textContent=S.blinkCounts[t]+' blink'+(S.blinkCounts[t]!==1?'s':'');
+            $('ringBlinks').textContent=S.blinkCounts[t]+' blink'+(S.blinkCounts[t]!==1?'s':'');
+          }
+          if(elapsed>=trialDur) stopTrial(false);
+        }
+
+        drawEyeOverlay(ctx,kps,c.width,c.height,vw,vh,S.currentTrial);
+        setStatus('TRACKING','on');
+      }
+    } else { setStatus('NO FACE','warn'); }
+  }catch(e){console.warn('[Blinky3000]',e);}
 
   requestAnimationFrame(loop);
 }
 
-// ── workflow helpers ──────────────────────────────────────────────────────────
-function enterCalPhase(side){
-  phase = side==='L' ? 'calL' : 'calR';
-  S.taps=[]; S.recording=null; S.recStart=null;
-  setStatus('TAP CARD','warn');
-  $('recBar').style.display='none';
-  $('eyeBtns').style.display='none';
-  $('calibBtns').style.display='flex';
-  $('tapProgress').style.display='flex';
-  $('lockBtn').disabled=true;
-  $('scaleVal').textContent='—'; $('cardPxVal').textContent='—';
-  tapCanvas.style.pointerEvents='';
-  tctx.clearRect(0,0,tapCanvas.width,tapCanvas.height);
-  updateTapUI();
-  const eye = side==='L' ? 'LEFT' : 'RIGHT';
-  const pos = side==='L'
-    ? 'left cheek/temple or across forehead-left'
-    : 'right cheek/temple or across forehead-right';
-  $('detbadge').className='none';
-  $('detbadge').textContent='NO SCALE '+eye;
-  $('instr').innerHTML=`<span>${eye} CAL</span> — card flat at <span>eye depth</span>, ${pos}. Pick orientation below, tap <span>2–4 points</span> across full card width.`;
+function drawEyeOverlay(ctx,kps,W,H,vw,vh,trial){
+  // mpR → displayed on LEFT;  mpL → displayed on RIGHT
+  [
+    {key:'mpR', col:'#7b8fff', ear:S.earDisplayL, lbl:'L'},
+    {key:'mpL', col:'#ff6b9d', ear:S.earDisplayR, lbl:'R'},
+  ].forEach(({key,col,ear,lbl})=>{
+    const relevant=!trial||trial===lbl||trial==='B';
+    ctx.globalAlpha=relevant?0.9:0.22;
+    ctx.strokeStyle=relevant?(ear<(CAL.threshold||99)?'#ffb347':col):col;
+    ctx.lineWidth=relevant?1.8:1;
+    ctx.beginPath();
+    EYE_PTS[key].forEach((pi,i)=>{
+      const {cx,cy}=vToC(kps[pi].x,kps[pi].y,W,H,vw,vh);
+      if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+    });
+    ctx.closePath(); ctx.stroke();
+    // EAR readout label
+    const {cx:ax,cy:ay}=vToC(kps[EYE_PTS[key][0]].x,kps[EYE_PTS[key][0]].y,W,H,vw,vh);
+    const belowThresh=CAL.threshold&&ear<CAL.threshold;
+    ctx.fillStyle=belowThresh?'#ffb347':col;
+    ctx.font='bold 10px Space Mono,monospace';
+    ctx.textAlign=lbl==='L'?'left':'right';
+    ctx.textBaseline='top';
+    const xo=lbl==='L'?4:-4;
+    ctx.fillText(`${lbl} ${ear.toFixed(3)}`,ax+xo,ay-18);
+    ctx.globalAlpha=1;
+  });
 }
 
-function enterRecPhase(side){
-  phase = side==='L' ? 'recL' : 'recR';
-  S.recording=null; S.recStart=null;
-  if(side==='L') S.samplesL=[];
-  else           S.samplesR=[];
-  setStatus('MEASURING','on');
-  $('calibBtns').style.display='none';
-  $('tapProgress').style.display='none';
-  $('eyeBtns').style.display='flex';
-  $('recalibRow').style.display='flex';
-  tapCanvas.style.pointerEvents='none';
-  tctx.clearRect(0,0,tapCanvas.width,tapCanvas.height);
-  // Show only the relevant button
-  $('snapL').style.display = side==='L' ? '' : 'none';
-  $('snapR').style.display = side==='R' ? '' : 'none';
-  $('snapL').disabled = side!=='L';
-  $('snapR').disabled = side!=='R';
-  // Redo-cal buttons
-  $('recalibLBtn').style.display = side==='L' ? '' : 'none';
-  $('recalibRBtn').style.display = side==='R' ? '' : 'none';
-  $('recalibAllBtn').style.display = '';
-  const eye = side==='L' ? 'LEFT' : 'RIGHT';
-  $('instr').innerHTML=`Look <span>straight</span> at camera — both eyes must be visible. Tap <span>RECORD ${eye}</span> and hold still for <span>${REC_SECS}s</span>. Status shows TURN STRAIGHT if pose is off.`;
-}
-
-// ── buttons ───────────────────────────────────────────────────────────────────
-$('startBtn').onclick = async () => {
+// ── Buttons ───────────────────────────────────────────────────────────────────
+$('startBtn').onclick=async()=>{
   $('startBtn').disabled=true; $('startBtn').textContent='Starting…';
   setStatus('CAMERA…','warn');
-  try{ await startCamera(); }
-  catch(e){
-    toast('Camera denied — check permissions');
-    $('startBtn').disabled=false; $('startBtn').textContent='▶ START CAMERA'; return;
-  }
-  setStatus('LOADING…','warn'); $('startBtn').textContent='Loading…';
-  try{ await loadModel(); }
-  catch(e){ toast('Model error'); return; }
-  S.running=true;
+  try{await startCamera();}
+  catch(e){toast('Camera denied — check permissions');$('startBtn').disabled=false;$('startBtn').textContent='▶ START CAMERA';return;}
+  setStatus('LOADING…','warn'); $('startBtn').textContent='Loading model…';
+  try{await loadModel();}
+  catch(e){toast('Model failed to load');return;}
+  S.running=true; S.sessionId=Date.now();
   $('startRow').style.display='none';
-  $('s1').classList.add('active');
-  resizeCanvases();
-  requestAnimationFrame(loop);
-  enterCalPhase('L');
+  resizeCanvas(); requestAnimationFrame(loop);
+  enterCalWait();
 };
-
-$('retryBtn').onclick = () => {
-  S.taps=[];
-  $('lockBtn').disabled=true;
-  $('scaleVal').textContent='—'; $('cardPxVal').textContent='—';
-  tctx.clearRect(0,0,tapCanvas.width,tapCanvas.height);
-  updateTapUI();
-  toast('Taps cleared');
+$('recordBtn').onclick=()=>{
+  if(S.trialActive){stopTrial(true);return;}
+  if(!S.currentTrial){toast('No trial ready');return;}
+  startTrial();
 };
-
-$('lockBtn').onclick = () => {
-  if(S.taps.length < MIN_TAPS){ toast('Need at least 2 taps'); return; }
-  const xs = S.taps.map(t=>t.cx);
-  const vidPxW = Math.max(...xs)-Math.min(...xs);
-  if(vidPxW<10){ toast('Taps too close — span the full card width'); return; }
-  const mmPerVidPx = cardMm / vidPxW;
-  const side = phase==='calL' ? 'L' : 'R';
-  if(side==='L') S.mmPerPxL=mmPerVidPx; else S.mmPerPxR=mmPerVidPx;
-  $('scaleVal').textContent = mmPerVidPx.toFixed(4);
-  $('cardPxVal').textContent = Math.round(vidPxW);
-  $('detbadge').className='locked';
-  $('detbadge').textContent=`${side} LOCKED  ${mmPerVidPx.toFixed(4)}mm/vid-px (${Math.round(vidPxW)}px)`;
-  if(side==='L'){ $('s1').className='step done'; $('s2').classList.add('active'); }
-  else          { $('s3').className='step done'; $('s4').classList.add('active'); }
-  toast(`${side==='L'?'Left':'Right'} scale: ${mmPerVidPx.toFixed(4)} mm/px  card=${Math.round(vidPxW)}vid-px`);
-  enterRecPhase(side);
-};
-
-$('recalibLBtn').onclick = () => {
-  S.mmPerPxL=null; S.irisL=null; S.statsL=null;
-  $('s1').className='step active'; $('s2').className='step';
-  $('recalibRow').style.display='none'; $('exportRow').style.display='none';
-  $('valL').textContent='—'; $('valL').className='rval pending';
-  $('unitL').textContent='not measured'; $('ciL').textContent=''; $('nL').textContent='';
-  enterCalPhase('L');
-  toast('Redo left calibration');
-};
-
-$('recalibRBtn').onclick = () => {
-  S.mmPerPxR=null; S.irisR=null; S.statsR=null;
-  $('s3').className='step active'; $('s4').className='step';
-  $('recalibRow').style.display='none'; $('exportRow').style.display='none';
-  $('valR').textContent='—'; $('valR').className='rval pending';
-  $('unitR').textContent='not measured'; $('ciR').textContent=''; $('nR').textContent='';
-  enterCalPhase('R');
-  toast('Redo right calibration');
-};
-
-$('recalibAllBtn').onclick = () => {
-  Object.assign(S, {
-    mmPerPxL:null, mmPerPxR:null, taps:[],
-    recording:null, recStart:null, samplesL:[], samplesR:[],
-    irisL:null, irisR:null, statsL:null, statsR:null, allRaw:[],
-    _debugLogged:false
-  });
-  ['recalibRow','exportRow','recBar'].forEach(id=>$(''+id).style.display='none');
-  ['valL','valR'].forEach(id=>{ $(id).textContent='—'; $(id).className='rval pending'; });
-  $('unitL').textContent='not measured'; $('unitR').textContent='not measured';
-  $('ciL').textContent=''; $('ciR').textContent='';
-  $('nL').textContent=''; $('nR').textContent='';
-  $('s1').className='step active';
-  $('s2').className='step'; $('s3').className='step'; $('s4').className='step';
-  $('detbadge').className='none'; $('detbadge').textContent='NO SCALE';
-  enterCalPhase('L');
-  toast('Full restart');
-};
-
-// ── statistics ────────────────────────────────────────────────────────────────
-function computeStats(arr){
-  const n = arr.length;
-  if(n<2) return null;
-  const mean = arr.reduce((a,b)=>a+b,0)/n;
-  const variance = arr.reduce((s,v)=>s+(v-mean)**2,0)/(n-1);
-  const se = Math.sqrt(variance/n);
-  const t = n>=120?1.980 : n>=60?2.000 : n>=30?2.042 : n>=20?2.093 : n>=10?2.228 : 2.776;
-  return {mean, ci:t*se, n, se, variance};
-}
-
-function updateRecBar(side, pct){
-  $('recFill').style.width = (Math.min(1,pct)*100).toFixed(1)+'%';
-  $('recLabel').textContent = `● RECORDING ${side==='L'?'LEFT':'RIGHT'}…`;
-  $('recCounts').textContent = `${(pct*REC_SECS).toFixed(1)}s / ${REC_SECS}s`;
-}
-
-function startRecording(side){
-  if(S.recording) return;
-  S.recording=side; S.recStart=Date.now();
-  if(side==='L') S.samplesL=[]; else S.samplesR=[];
-  $('snapL').disabled=true; $('snapR').disabled=true;
-  $('snapL').classList.toggle('recording',side==='L');
-  $('snapR').classList.toggle('recording',side==='R');
-  $('recBar').style.display='flex';
-  $('recFill').style.width='0%';
-  $('recCounts').textContent=`0.0s / ${REC_SECS}s`;
-  $('recLabel').textContent=`● RECORDING ${side==='L'?'LEFT':'RIGHT'}…`;
-  toast(`Recording ${side==='L'?'left':'right'} iris — hold still…`);
-}
-
-function finalizeEye(side){
-  const samples = side==='L' ? S.samplesL : S.samplesR;
-  const stats = computeStats(samples);
-  S.recording=null; S.recStart=null;
-  $('snapL').classList.remove('recording'); $('snapR').classList.remove('recording');
-  $('snapL').disabled=false; $('snapR').disabled=false;
-  $('recBar').style.display='none';
-
-  if(!stats||stats.n<3){ toast('Too few samples — keep face visible, try again'); return; }
-
-  // Warn if result is outside plausible human iris range (10–14mm typical)
-  const warn = stats.mean > 16 || stats.mean < 6;
-  const warnTxt = warn ? ' ⚠' : '';
-
-  if(side==='L'){
-    S.irisL=stats.mean; S.statsL=stats;
-    S.lRadAtCalL = S.liveIrisL ? S.samplesL[Math.floor(S.samplesL.length/2)] : null; // midpoint sample for cross-check
-    $('valL').textContent=stats.mean.toFixed(2)+warnTxt; $('valL').className='rval';
-    $('unitL').textContent='mm  ✓ averaged';
-    $('ciL').innerHTML=`95% CI: <span>±${stats.ci.toFixed(2)}mm</span>`;
-    $('nL').textContent=`n=${stats.n} frames`;
-    $('s2').className='step done'; $('s3').classList.add('active');
-    enterCalPhase('R');
-  } else {
-    S.irisR=stats.mean; S.statsR=stats;
-    $('valR').textContent=stats.mean.toFixed(2)+warnTxt; $('valR').className='rval';
-    $('unitR').textContent='mm  ✓ averaged';
-    $('ciR').innerHTML=`95% CI: <span>±${stats.ci.toFixed(2)}mm</span>`;
-    $('nR').textContent=`n=${stats.n} frames`;
-    $('s4').className='step done';
-  }
-
-  if(warn) toast(`⚠ ${stats.mean.toFixed(1)}mm outside 6–16mm range — recheck calibration`);
-  else     toast(`${side==='L'?'Left':'Right'}: ${stats.mean.toFixed(2)} ± ${stats.ci.toFixed(2)}mm`);
-
-  if(S.irisL && S.irisR){
-    const diff=Math.abs(S.irisL-S.irisR);
-    const larger=S.irisL>=S.irisR?'LEFT':'RIGHT';
-    const badRange = S.irisL>16||S.irisR>16||S.irisL<6||S.irisR<6;
-    const bigDiff = diff > 2.0;  // >2mm asymmetry is unusual, >1mm is clinically notable
-    const warnNote = badRange ? '  <span style="color:var(--warn)">⚠ outside 6–16mm range</span>'
-                   : bigDiff  ? `  <span style="color:var(--warn)">⚠ ${diff.toFixed(2)}mm asymmetry — recheck cals</span>`
-                   : '';
-    $('instr').innerHTML=`<span>${larger}</span> larger by <span>${diff.toFixed(2)}mm</span> — L:${S.irisL.toFixed(2)} R:${S.irisR.toFixed(2)}mm${warnNote}`;
-    setStatus('COMPLETE','on');
-    $('eyeBtns').style.display='none';
-    $('recalibRow').style.display='flex';
-    $('recalibLBtn').style.display=''; $('recalibRBtn').style.display=''; $('recalibAllBtn').style.display='';
-    $('exportRow').style.display='flex';
-  }
-}
-
-$('snapL').onclick = () => startRecording('L');
-$('snapR').onclick = () => startRecording('R');
+$('resetBtn').onclick=()=>resetToSetup();
+$('restartBtn').onclick=()=>resetToSetup();
 
 // ── CSV export ────────────────────────────────────────────────────────────────
-$('exportBtn').onclick = () => {
-  const ts = new Date().toISOString().replace(/[:.]/g,'-');
-  const rows = ['timestamp_ms,side,iris_mm,scale_mm_per_px'];
-  S.allRaw.forEach(r=>{
-    rows.push(`${r.t},${r.side},${r.mm.toFixed(4)},${r.scale?r.scale.toFixed(6):''}`);
-  });
-  rows.push('');
-  rows.push('# SUMMARY');
-  rows.push('side,mean_mm,ci95_mm,n,se_mm,scale_mm_per_px');
-  if(S.statsL) rows.push(`L,${S.statsL.mean.toFixed(4)},${S.statsL.ci.toFixed(4)},${S.statsL.n},${S.statsL.se.toFixed(4)},${(S.mmPerPxL||0).toFixed(6)}`);
-  if(S.statsR) rows.push(`R,${S.statsR.mean.toFixed(4)},${S.statsR.ci.toFixed(4)},${S.statsR.n},${S.statsR.se.toFixed(4)},${(S.mmPerPxR||0).toFixed(6)}`);
-  const blob = new Blob([rows.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`iriscalib_${ts}.csv`;
-  a.click();
+$('exportBtn').onclick=()=>{
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  const rows=['session_id,trial,blink_n,timestamp_ms,elapsed_ms,earDisplayL,earDisplayR'];
+  S.rawEvents.forEach(r=>rows.push(`${S.sessionId},${r.trial},${r.blink_n},${r.t},${r.elapsed_ms},${r.earDL||''},${r.earDR||''}`));
+  rows.push('','# SUMMARY','trial,duration_s,blinks,blinks_per_s_hz');
+  ['L','R','B'].forEach(t=>{ if(S.resultsHz[t]!==null) rows.push(`${t},${S.sessionDur[t].toFixed(3)},${S.blinkCounts[t]},${S.resultsHz[t].toFixed(4)}`); });
+  rows.push('','# CALIBRATION');
+  rows.push(`open_ear,${CAL.openEAR?.toFixed(4)||'skipped'}`);
+  rows.push(`closed_ear,${CAL.closedEAR?.toFixed(4)||'skipped'}`);
+  rows.push(`threshold,${CAL.threshold?.toFixed(4)||''}`);
+  rows.push(`hysteresis,${CAL.hysteresis?.toFixed(4)||''}`);
+  rows.push('','# CONFIG');
+  rows.push(`trial_duration_s,${trialDur}`);
+  rows.push(`conditions_run,${S.trialQueue.join('+')}`);
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`blinky3000_${ts}.csv`;a.click();
   toast('CSV exported');
 };
 
-window.addEventListener('resize', resizeCanvases);
-resizeCanvases();
-
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./sw.js')
-      .catch(e=>console.warn('SW registration failed:',e));
+// ── Ghost strip ───────────────────────────────────────────────────────────────
+(function(){
+  const G=(color,scared)=>`<svg viewBox="0 0 26 28" xmlns="http://www.w3.org/2000/svg">
+  <path fill="${scared?'#2040c8':color}" d="M13,2 C7.5,2 3,6.5 3,12 L3,24 L6.5,21 L10,24 L13,21 L16,24 L19.5,21 L23,24 L23,12 C23,6.5 18.5,2 13,2Z"/>
+  <ellipse cx="9.5" cy="12" rx="3.2" ry="3.8" fill="${scared?'#1a30a8':'white'}"/>
+  <ellipse cx="16.5" cy="12" rx="3.2" ry="3.8" fill="${scared?'#1a30a8':'white'}"/>
+  <ellipse cx="10.2" cy="12.5" rx="1.6" ry="2" fill="${scared?'white':'#5060ff'}"/>
+  <ellipse cx="17.2" cy="12.5" rx="1.6" ry="2" fill="${scared?'white':'#5060ff'}"/>
+</svg>`;
+  const COLS=['#4af0c8','#ff6b9d','#7b8fff','#ffb347','#ff6b9d','#4af0c8'];
+  const lane=document.getElementById('ghostLane');
+  let W=lane.offsetWidth||window.innerWidth;
+  const ghosts=COLS.map((col,i)=>{
+    const el=document.createElement('div');
+    el.className='ghost'; el.innerHTML=G(col,false);
+    const sx=-40-i*110;
+    el.style.cssText=`left:${sx}px;animation:bob ${0.55+i*0.07}s ease-in-out infinite`;
+    lane.appendChild(el);
+    return{el,x:sx,speed:0.9+i*0.18,color:col};
   });
+  window._scareGhosts=()=>{
+    ghosts.forEach(g=>{
+      g.el.innerHTML=G(g.color,true);
+      setTimeout(()=>g.el.innerHTML=G(g.color,false),600);
+    });
+  };
+  let last=0;
+  (function tick(ts){
+    if(!last)last=ts;
+    const dt=Math.min(ts-last,50); last=ts;
+    W=lane.offsetWidth||window.innerWidth;
+    ghosts.forEach(g=>{
+      g.x+=g.speed*(dt/16);
+      if(g.x>W+10) g.x=-36;
+      g.el.style.left=g.x.toFixed(1)+'px';
+    });
+    requestAnimationFrame(tick);
+  })(0);
+  window.addEventListener('resize',()=>{W=lane.offsetWidth||window.innerWidth;});
+})();
+
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW:',e)));
 }
 </script>
 </body>
