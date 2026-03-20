@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blinky 3000">
+<meta name="theme-color" content="#050508">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Blinky 3000</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050508;--surf:#0d0d18;--surf2:#141425;
+  --border:rgba(100,160,255,.13);--accent:#4af0c8;
+  --accent2:#7b8fff;--accent3:#ff6b9d;--warn:#ffb347;
+  --text:#e8eaf6;--dim:#5a6090;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:-webkit-fill-available;background:var(--bg)}
+body{
+  min-height:100vh;min-height:-webkit-fill-available;
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#app{display:flex;flex-direction:column;min-height:100vh;min-height:-webkit-fill-available}
+header{
+  display:flex;align-items:center;gap:10px;padding:0 18px;height:50px;
+  background:var(--surf);border-bottom:1px solid var(--border);
+  flex-shrink:0;z-index:5;position:sticky;top:0;
+}
+.logo{font-size:17px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
+.logo span{color:var(--dim);font-weight:400}
+.badge{font-family:var(--mono);font-size:10px;background:var(--accent);color:#071a14;padding:2px 5px;border-radius:3px}
+.pill{margin-left:auto;display:flex;align-items:center;gap:6px;padding:4px 11px;
+  border-radius:20px;background:var(--surf2);border:1px solid var(--border);
+  font-family:var(--mono);font-size:11px;color:var(--dim)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);transition:background .3s}
+.dot.on{background:var(--accent);box-shadow:0 0 7px var(--accent)}
+.dot.warn{background:var(--warn);box-shadow:0 0 7px var(--warn)}
+.dot.rec{background:var(--accent3);box-shadow:0 0 7px var(--accent3);animation:pulse-dot .7s ease-in-out infinite alternate}
+@keyframes pulse-dot{from{opacity:.5}to{opacity:1}}
+
+#camwrap{
+  position:relative;width:100%;
+  height:clamp(200px,55vw,55vh);
+  background:#000;overflow:hidden;flex-shrink:0;
+}
+video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+canvas#overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+
+/* ── Ghost animation ────────────────────────────────────────────────── */
+#ghostStrip{
+  height:38px;background:var(--bg);overflow:hidden;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+  position:relative;
+}
+.ghost-lane{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;align-items:center;
+}
+.ghost{
+  position:absolute;
+  width:26px;height:26px;
+  will-change:transform;
+}
+.ghost svg{display:block;width:100%;height:100%}
+/* wavy bob */
+@keyframes bob{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-3px)}
+}
+/* eye shift for direction */
+.ghost.left .pupil-l{transform:translateX(-1.5px)}
+.ghost.left .pupil-r{transform:translateX(-1.5px)}
+.ghost.right .pupil-l{transform:translateX(1.5px)}
+.ghost.right .pupil-r{transform:translateX(1.5px)}
+/* scared (blue) state */
+.ghost.scared .gbody{fill:#2040c8}
+.ghost.scared .geye{fill:#2040c8}
+.ghost.scared .gpupil{fill:#fff}
+
+#blinkFlash{
+  position:absolute;inset:0;background:rgba(74,240,200,0);
+  pointer-events:none;z-index:4;transition:background 0.05s;
+}
+#blinkFlash.flash{background:rgba(74,240,200,0.25)}
+
+#panel{
+  background:var(--surf);border-top:1px solid var(--border);
+  padding:14px 18px 40px;flex:1;
+  display:flex;flex-direction:column;gap:12px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+
+/* Trial step indicators */
+.steps{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.step{font-family:var(--mono);font-size:10px;letter-spacing:.8px;
+  padding:3px 8px;border-radius:4px;background:var(--surf2);
+  border:1px solid var(--border);color:var(--dim);transition:all .25s}
+.step.active{border-color:var(--accent);color:var(--accent)}
+.step.done{border-color:rgba(74,240,200,.3);color:rgba(74,240,200,.5)}
+.sep{color:var(--dim);font-size:10px}
+
+#instr{font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.7;min-height:36px}
+#instr span{color:var(--accent)}
+#instr span.w{color:var(--warn)}
+
+/* Duration selector */
+#durRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dur-label{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.dur-btn{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;
+  background:var(--surf2);border:1px solid var(--border);color:var(--dim);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .2s}
+.dur-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(74,240,200,.08)}
+.dur-custom{width:52px;background:var(--surf2);border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;
+  border-radius:4px;text-align:center}
+.dur-custom:focus{outline:none;border-color:var(--accent)}
+
+/* Eye selector */
+#eyeRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.eye-lbl{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.eye-btn{font-family:var(--mono);font-size:10px;padding:4px 12px;border-radius:4px;
+  background:var(--surf2);border:1px solid var(--border);color:var(--dim);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .2s}
+.eye-btn.active-L{border-color:var(--accent2);color:var(--accent2);background:rgba(123,143,255,.08)}
+.eye-btn.active-R{border-color:var(--accent3);color:var(--accent3);background:rgba(255,107,157,.08)}
+.eye-btn.active-B{border-color:var(--accent);color:var(--accent);background:rgba(74,240,200,.08)}
+
+/* Trial progress */
+#trialProgress{display:none;flex-direction:column;gap:5px}
+.tp-label{font-family:var(--mono);font-size:10px;color:var(--accent3)}
+.tp-track{height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
+.tp-fill{height:100%;background:var(--accent3);border-radius:2px;width:0%;transition:width .1s linear}
+.tp-info{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.tp-blink{font-family:var(--mono);font-size:11px;color:var(--accent)}
+
+/* Results cards */
+.rrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rcard{background:var(--surf2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;position:relative;overflow:hidden;transition:all .3s}
+.rcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.rcard.L::before{background:var(--accent2)}
+.rcard.R::before{background:var(--accent3)}
+.rcard.B::before{background:var(--accent)}
+.rcard.pending{opacity:.4}
+.rlbl{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:4px}
+.rval{font-size:20px;font-weight:800;letter-spacing:-1px;line-height:1}
+.rval.L{color:var(--accent2)}
+.rval.R{color:var(--accent3)}
+.rval.B{color:var(--accent)}
+.runit{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:2px}
+.rval.pending{color:var(--dim);font-size:14px;font-weight:400}
+.rn{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
+
+/* Live blink counter badge */
+#liveCount{
+  display:none;position:absolute;top:10px;right:10px;
+  background:rgba(5,5,8,.8);border:1px solid var(--accent3);
+  border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:13px;
+  color:var(--accent3);letter-spacing:.5px;z-index:5;
+}
+
+/* Timer ring */
+#timerRing{display:none;align-items:center;gap:10px}
+.ring-wrap{position:relative;width:44px;height:44px;flex-shrink:0}
+.ring-bg{fill:none;stroke:var(--surf2);stroke-width:5}
+.ring-fg{fill:none;stroke:var(--accent3);stroke-width:5;stroke-linecap:round;
+  stroke-dasharray:113;stroke-dashoffset:113;transition:stroke-dashoffset .1s linear;
+  transform:rotate(-90deg);transform-origin:50% 50%}
+.ring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent3)}
+.ring-side{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.ring-blinks{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent)}
+
+.btnrow{display:flex;gap:8px}
+.btn{flex:1;padding:12px;border-radius:8px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.5px;cursor:pointer;transition:all .2s;border:1px solid;
+  -webkit-tap-highlight-color:transparent;background:transparent}
+.btn-primary{border-color:rgba(74,240,200,.4);color:var(--accent);background:rgba(74,240,200,.07)}
+.btn-primary:active{background:rgba(74,240,200,.18)}
+.btn-primary:disabled{opacity:.3;cursor:default;pointer-events:none}
+.btn-ghost{border-color:var(--border);color:var(--dim)}
+.btn-ghost:active{background:var(--surf2)}
+.btn-record{border-color:rgba(255,107,157,.5);color:var(--accent3);background:rgba(255,107,157,.08);font-size:13px;font-weight:700}
+.btn-record:active{background:rgba(255,107,157,.2)}
+.btn-record:disabled{opacity:.3;cursor:default;pointer-events:none}
+.btn-record.recording{
+  border-color:rgba(255,107,157,.9);background:rgba(255,107,157,.18);
+  animation:pulse-btn .7s ease-in-out infinite alternate;
+}
+@keyframes pulse-btn{from{opacity:.75}to{opacity:1}}
+.btn-export{border-color:rgba(74,240,200,.25);color:var(--accent);background:rgba(74,240,200,.04);font-size:10px}
+.btn-export:active{background:rgba(74,240,200,.12)}
+.btn-export:disabled{opacity:.3;cursor:default;pointer-events:none}
+
+/* Current trial queue indicator */
+#queueRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qtag{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;
+  border:1px solid var(--border);color:var(--dim);background:var(--surf2);transition:all .25s}
+.qtag.next{border-color:var(--warn);color:var(--warn);background:rgba(255,179,71,.07)}
+.qtag.done{border-color:rgba(74,240,200,.3);color:rgba(74,240,200,.5)}
+.qtag.running{border-color:var(--accent3);color:var(--accent3);background:rgba(255,107,157,.1);animation:pulse-btn .7s ease-in-out infinite alternate}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:rgba(74,240,200,.1);border:1px solid var(--accent);border-radius:8px;
+  padding:9px 16px;font-family:var(--mono);font-size:12px;color:var(--accent);
+  transition:transform .3s;white-space:nowrap;z-index:999;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Responsive: 2-col on narrow */
+@media(max-width:400px){
+  .rrow{grid-template-columns:1fr 1fr}
+  .rrow .rcard:last-child{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="ghostStrip"><div class="ghost-lane" id="ghostLane"></div></div>
+
+  <header>
+    <div class="logo">Blinky <span>3000</span></div>
+    <span class="badge">v1</span>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--dim)">blink rate</div>
+    <div class="pill"><div class="dot" id="dot"></div><span id="stxt">IDLE</span></div>
+  </header>
+
+  <div id="camwrap">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div id="blinkFlash"></div>
+    <div id="liveCount">0 blinks</div>
+  </div>
+
+  <div id="panel">
+
+    <!-- Setup controls (shown before first trial) -->
+    <div id="setupSection">
+      <!-- Duration selector -->
+      <div id="durRow">
+        <span class="dur-label">DURATION:</span>
+        <button class="dur-btn active" data-dur="10" onclick="setDur(10)">10s</button>
+        <button class="dur-btn" data-dur="15" onclick="setDur(15)">15s</button>
+        <button class="dur-btn" data-dur="30" onclick="setDur(30)">30s</button>
+        <button class="dur-btn" data-dur="60" onclick="setDur(60)">60s</button>
+        <input class="dur-custom" id="durCustom" type="number" min="5" max="60" placeholder="5-60" title="Custom seconds">
+        <span class="dur-label">s</span>
+      </div>
+
+      <!-- Eye condition selector -->
+      <div id="eyeRow">
+        <span class="eye-lbl">EYE(S):</span>
+        <button class="eye-btn active-L" id="ebL" onclick="toggleEye('L')">LEFT</button>
+        <button class="eye-btn active-R" id="ebR" onclick="toggleEye('R')">RIGHT</button>
+        <button class="eye-btn active-B" id="ebB" onclick="toggleEye('B')">BOTH</button>
+      </div>
+    </div>
+
+    <!-- Instruction line -->
+    <div id="instr">Tap <span>▶ START CAMERA</span> to begin.</div>
+
+    <!-- Trial queue tags -->
+    <div id="queueRow" style="display:none"></div>
+
+    <!-- Live timer ring + blink count during recording -->
+    <div id="timerRing">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 40 40" width="44" height="44">
+          <circle class="ring-bg" cx="20" cy="20" r="18"/>
+          <circle class="ring-fg" id="ringFg" cx="20" cy="20" r="18"/>
+        </svg>
+        <div class="ring-txt" id="ringTxt">—</div>
+      </div>
+      <div>
+        <div class="ring-side" id="ringSide">—</div>
+        <div class="ring-blinks" id="ringBlinks">— blinks</div>
+      </div>
+    </div>
+
+    <!-- Results cards: L / R / Both -->
+    <div class="rrow" id="resultsRow">
+      <div class="rcard L pending" id="cardL">
+        <div class="rlbl">LEFT EYE</div>
+        <div class="rval pending" id="valL">—</div>
+        <div class="runit" id="unitL">not run</div>
+        <div class="rn" id="nL"></div>
+      </div>
+      <div class="rcard R pending" id="cardR">
+        <div class="rlbl">RIGHT EYE</div>
+        <div class="rval pending" id="valR">—</div>
+        <div class="runit" id="unitR">not run</div>
+        <div class="rn" id="nR"></div>
+      </div>
+      <div class="rcard B pending" id="cardB">
+        <div class="rlbl">BOTH EYES</div>
+        <div class="rval pending" id="valB">—</div>
+        <div class="runit" id="unitB">not run</div>
+        <div class="rn" id="nB"></div>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="btnrow" id="startRow">
+      <button class="btn btn-primary" id="startBtn">▶ START CAMERA</button>
+    </div>
+
+    <div class="btnrow" id="recordRow" style="display:none">
+      <button class="btn btn-ghost" id="resetBtn" style="flex:0 0 auto;padding:12px 16px">↺</button>
+      <button class="btn btn-record" id="recordBtn" disabled>⏺ RECORD</button>
+    </div>
+
+    <div class="btnrow" id="exportRow" style="display:none">
+      <button class="btn btn-export" id="exportBtn">↓ EXPORT CSV</button>
+      <button class="btn btn-ghost" id="restartBtn" style="font-size:10px">↺ NEW SESSION</button>
+    </div>
+
+  </div>
+</div>
+<div id="toast"></div>
+
+<!-- MediaPipe + TF -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.17.0/dist/tf-core.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.17.0/dist/tf-backend-webgl.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js" crossorigin="anonymous"></script>
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Blink3000 — Voluntary Blink Rate Tester
+// Detects blinks via Eye Aspect Ratio (EAR) on MediaPipe 478-landmark mesh.
+//
+// Three trial conditions: Left eye only, Right eye only, Both eyes.
+// Each trial records blink timestamps (ms). Reports blinks/s (Hz) + CSV export.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const $ = id => document.getElementById(id);
+const toast = msg => {
+  const t=$('toast'); t.textContent=msg;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800);
+};
+const setStatus = (txt,mode='') => {
+  $('stxt').textContent=txt;
+  $('dot').className='dot'+(mode?' '+mode:'');
+};
+
+// ── state ─────────────────────────────────────────────────────────────────────
+let trialDur = 10;        // seconds
+let activeEyes = new Set(['L','R','B']); // which conditions to run
+
+const S = {
+  running: false,
+  detector: null,
+  // Trial queue
+  trialQueue: [],      // e.g. ['L','R','B']
+  trialIdx: -1,        // which trial we're on
+  currentTrial: null,  // 'L'|'R'|'B'
+  trialActive: false,
+  trialStart: null,
+  // Blink detection state (per-frame EAR tracking)
+  earL: 1, earR: 1,
+  blinkStateL: false, blinkStateR: false,
+  // Results per condition: array of blink timestamps (ms from epoch)
+  blinkTimes: { L:[], R:[], B:[] },
+  blinkCounts: { L:0, R:0, B:0 },
+  resultsHz: { L:null, R:null, B:null },
+  sessionDur: { L:0, R:0, B:0 },
+  // All raw blink events for CSV
+  rawEvents: [],
+  sessionId: null,
+};
+
+// ── EAR landmark indices (MediaPipe 478-point) ────────────────────────────────
+// Left eye EAR: vertical pairs (159,145), (158,153), horizontal (133,33)
+// Right eye EAR: vertical pairs (386,374), (385,380), horizontal (362,263)
+// EAR = (||p2-p6|| + ||p3-p5||) / (2 * ||p1-p4||)
+// Using standard 6-point EAR per eye from FaceMesh468 equivalents:
+const EAR_IDX = {
+  L: { v1:[159,145], v2:[158,153], h:[133,33] },
+  R: { v1:[386,374], v2:[385,380], h:[362,263] },
+};
+const EAR_BLINK_THRESH = 0.20;  // below this = eye closed
+const EAR_MIN_OPEN = 0.25;       // must re-open above this to reset blink state
+
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function computeEAR(kps, side){
+  const idx = EAR_IDX[side];
+  const v1 = dist(kps[idx.v1[0]], kps[idx.v1[1]]);
+  const v2 = dist(kps[idx.v2[0]], kps[idx.v2[1]]);
+  const h  = dist(kps[idx.h[0]],  kps[idx.h[1]]);
+  if(h < 0.5) return 1; // degenerate
+  return (v1 + v2) / (2 * h);
+}
+
+// ── duration control ──────────────────────────────────────────────────────────
+function setDur(s){
+  trialDur = s;
+  document.querySelectorAll('.dur-btn').forEach(b=>{
+    b.classList.toggle('active', +b.dataset.dur===s);
+  });
+  $('durCustom').value='';
+}
+
+$('durCustom').addEventListener('change', ()=>{
+  const v = Math.max(5, Math.min(60, parseInt($('durCustom').value)||10));
+  $('durCustom').value = v;
+  trialDur = v;
+  document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));
+});
+
+// ── eye condition toggle ──────────────────────────────────────────────────────
+function toggleEye(e){
+  // Toggle: if only one left and it's this one, don't remove
+  if(activeEyes.has(e) && activeEyes.size===1){ toast('Keep at least one condition'); return; }
+  if(activeEyes.has(e)) activeEyes.delete(e); else activeEyes.add(e);
+  updateEyeBtns();
+}
+function updateEyeBtns(){
+  [['L','ebL'],['R','ebR'],['B','ebB']].forEach(([k,id])=>{
+    const btn=$(''+id);
+    if(activeEyes.has(k)){
+      btn.className = 'eye-btn active-'+k;
+    } else {
+      btn.className = 'eye-btn';
+    }
+  });
+}
+
+// ── queue display ─────────────────────────────────────────────────────────────
+const EYE_LABEL = {L:'LEFT EYE', R:'RIGHT EYE', B:'BOTH EYES'};
+
+function buildQueue(){
+  // Standard order: L → R → B, filtered by activeEyes
+  S.trialQueue = ['L','R','B'].filter(e=>activeEyes.has(e));
+  S.trialIdx = -1;
+  S.currentTrial = null;
+  renderQueue();
+}
+
+function renderQueue(){
+  const row=$('queueRow');
+  row.innerHTML='';
+  S.trialQueue.forEach((t,i)=>{
+    if(i>0){ const sep=document.createElement('span'); sep.className='sep'; sep.textContent='›'; row.appendChild(sep); }
+    const tag=document.createElement('div');
+    tag.className='qtag';
+    tag.id='qtag_'+t;
+    tag.textContent=EYE_LABEL[t];
+    if(i < S.trialIdx) tag.classList.add('done');
+    else if(i===S.trialIdx) tag.classList.add('running');
+    else if(i===S.trialIdx+1) tag.classList.add('next');
+    row.appendChild(tag);
+  });
+  row.style.display='flex';
+}
+
+// ── trial control ─────────────────────────────────────────────────────────────
+function nextTrial(){
+  S.trialIdx++;
+  if(S.trialIdx >= S.trialQueue.length){
+    endSession();
+    return;
+  }
+  S.currentTrial = S.trialQueue[S.trialIdx];
+  renderQueue();
+  const eyeStr = EYE_LABEL[S.currentTrial];
+  $('instr').innerHTML = `Trial <span>${S.trialIdx+1}/${S.trialQueue.length}</span>: <span>${eyeStr}</span> — blink normally. Press <span class="w">⏺ RECORD</span> to start.`;
+  $('recordBtn').disabled = false;
+  $('recordBtn').textContent = `⏺ RECORD — ${eyeStr}`;
+  $('recordBtn').classList.remove('recording');
+}
+
+function startTrial(){
+  S.trialActive = true;
+  S.trialStart = Date.now();
+  const t = S.currentTrial;
+  S.blinkTimes[t] = [];
+  S.blinkCounts[t] = 0;
+  // Reset blink detection state
+  S.earL=1; S.earR=1; S.blinkStateL=false; S.blinkStateR=false; S._blinkStateB=false;
+
+  $('recordBtn').textContent = '⏹ STOP';
+  $('recordBtn').classList.add('recording');
+  $('trialProgress').style.display='flex';
+  $('timerRing').style.display='flex';
+  $('liveCount').style.display='';
+  $('liveCount').textContent='0 blinks';
+  $('ringSide').textContent = EYE_LABEL[t];
+  $('ringBlinks').textContent = '0 blinks';
+  setStatus('RECORDING','rec');
+  $('setupSection').style.display='none';
+  toast(`Trial ${S.trialIdx+1}: ${EYE_LABEL[t]} — blink normally!`);
+}
+
+function stopTrial(manual=false){
+  if(!S.trialActive) return;
+  S.trialActive = false;
+  const t = S.currentTrial;
+  const elapsed = (Date.now() - S.trialStart) / 1000;
+  const actualDur = manual ? elapsed : trialDur;
+  const blinks = S.blinkCounts[t];
+  const hz = blinks / Math.max(actualDur, 0.1);
+  S.resultsHz[t] = hz;
+  S.sessionDur[t] = actualDur;
+
+  // Finalize result card
+  updateResultCard(t, hz, blinks, actualDur);
+
+  $('recordBtn').classList.remove('recording');
+  $('timerRing').style.display='none';
+  $('liveCount').style.display='none';
+  setStatus('IDLE','');
+
+  if(!manual) toast(`${EYE_LABEL[t]}: ${blinks} blinks in ${actualDur.toFixed(1)}s → ${hz.toFixed(2)} Hz`);
+
+  // Auto-advance
+  setTimeout(()=>{ nextTrial(); }, 800);
+}
+
+function updateResultCard(t, hz, blinks, dur){
+  $('val'+t).textContent = hz.toFixed(2);
+  $('val'+t).className = 'rval '+t;
+  $('unit'+t).textContent = 'blinks/s (Hz)';
+  $('n'+t).textContent = `${blinks} blinks / ${dur.toFixed(1)}s`;
+  $('card'+t).classList.remove('pending');
+}
+
+function endSession(){
+  $('recordRow').style.display='none';
+  $('exportRow').style.display='flex';
+  $('queueRow').style.display='none';
+  $('instr').innerHTML=`Session complete. <span>${S.trialQueue.length}</span> trial(s) done. Export or start a new session.`;
+  setStatus('DONE','on');
+  toast('All trials complete!');
+}
+
+// ── reset / restart ───────────────────────────────────────────────────────────
+function resetToSetup(){
+  if(S.trialActive) stopTrial(true);
+  S.trialIdx=-1; S.currentTrial=null; S.trialActive=false;
+  S.blinkTimes={L:[],R:[],B:[]}; S.blinkCounts={L:0,R:0,B:0};
+  S.resultsHz={L:null,R:null,B:null}; S.sessionDur={L:0,R:0,B:0};
+  S.rawEvents=[];
+  S.sessionId = Date.now();
+  // Reset result cards
+  ['L','R','B'].forEach(t=>{
+    $('val'+t).textContent='—'; $('val'+t).className='rval pending';
+    $('unit'+t).textContent='not run'; $('n'+t).textContent='';
+    $('card'+t).classList.add('pending');
+  });
+  $('timerRing').style.display='none';
+  $('liveCount').style.display='none';
+  $('recordBtn').classList.remove('recording');
+  $('exportRow').style.display='none';
+  $('recordRow').style.display='flex';
+  $('setupSection').style.display='';
+  $('queueRow').style.display='none';
+  setStatus('READY','on');
+  buildQueue();
+  nextTrial();
+}
+
+// ── camera + model ────────────────────────────────────────────────────────────
+async function startCamera(){
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:'user',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}}
+  });
+  $('video').srcObject = stream;
+  return new Promise(res=>{ $('video').onloadedmetadata=()=>{ $('video').play(); res(); }; });
+}
+
+async function loadModel(){
+  S.detector = await faceLandmarksDetection.createDetector(
+    faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+    { runtime:'mediapipe',
+      solutionPath:'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619',
+      refineLandmarks:true, maxFaces:1 }
+  );
+}
+
+// ── render loop ───────────────────────────────────────────────────────────────
+function resizeCanvas(){
+  const w=$('camwrap').clientWidth, h=$('camwrap').clientHeight;
+  const c=$('overlay');
+  if(c.width!==w||c.height!==h){ c.width=w; c.height=h; }
+}
+
+async function loop(){
+  if(!S.running){ requestAnimationFrame(loop); return; }
+  const video=$('video');
+  if(video.readyState<2){ requestAnimationFrame(loop); return; }
+
+  resizeCanvas();
+  const c=$('overlay'), ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+
+  if(!S.detector){ requestAnimationFrame(loop); return; }
+
+  try{
+    const faces = await S.detector.estimateFaces(video,{flipHorizontal:false});
+    if(faces.length){
+      let kps = faces[0].keypoints;
+      const vw=video.videoWidth||1280, vh=video.videoHeight||720;
+      const maxX = Math.max(...kps.slice(0,10).map(p=>p.x));
+      if(maxX<2) kps=kps.map(p=>({x:p.x*vw,y:p.y*vh}));
+
+      if(kps.length>=478){
+        // Compute EAR
+        const earL = computeEAR(kps,'L');
+        const earR = computeEAR(kps,'R');
+        S.earL=earL; S.earR=earR;
+
+        // Blink detection
+        const now = Date.now();
+        const t = S.currentTrial;
+
+        if(S.trialActive && t){
+          const elapsed = (now - S.trialStart)/1000;
+
+          // Update timer ring
+          const pct = Math.min(1, elapsed/trialDur);
+          const circumf=113;
+          $('ringFg').style.strokeDashoffset = (circumf*(1-pct)).toFixed(2);
+          const rem = Math.max(0, trialDur-elapsed);
+          $('ringTxt').textContent = rem<=9.5 ? rem.toFixed(1)+'s' : Math.ceil(rem)+'s';
+
+          // ── Blink detection — strict per-trial isolation ──────────────────
+          // Each trial tracks ONLY its designated eye(s).
+          // L trial  → watches left EAR only;  right EAR is completely ignored.
+          // R trial  → watches right EAR only; left EAR is completely ignored.
+          // B trial  → one shared blink state; fires when EITHER eye closes
+          //            (natural bilateral blink), re-opens when BOTH reopen.
+          // A single blink can never be counted more than once per trial frame.
+          let blinkDetected = false;
+
+          if(t === 'L'){
+            // Only the left eye governs this trial
+            if(earL < EAR_BLINK_THRESH && !S.blinkStateL){
+              S.blinkStateL = true;
+              blinkDetected = true;
+            }
+            if(earL > EAR_MIN_OPEN) S.blinkStateL = false;
+            // Advance right-eye state machine so it stays clean for later trials
+            if(earR > EAR_MIN_OPEN) S.blinkStateR = false;
+
+          } else if(t === 'R'){
+            // Only the right eye governs this trial
+            if(earR < EAR_BLINK_THRESH && !S.blinkStateR){
+              S.blinkStateR = true;
+              blinkDetected = true;
+            }
+            if(earR > EAR_MIN_OPEN) S.blinkStateR = false;
+            // Advance left-eye state machine so it stays clean for later trials
+            if(earL > EAR_MIN_OPEN) S.blinkStateL = false;
+
+          } else if(t === 'B'){
+            // Both eyes: one shared event — fires when either eye closes,
+            // resets only when BOTH eyes are fully open again.
+            const eitherClosed = (earL < EAR_BLINK_THRESH || earR < EAR_BLINK_THRESH);
+            const bothOpen     = (earL > EAR_MIN_OPEN && earR > EAR_MIN_OPEN);
+            if(eitherClosed && !S._blinkStateB){
+              S._blinkStateB = true;
+              blinkDetected = true;
+            }
+            if(bothOpen) S._blinkStateB = false;
+            // Keep individual states tidy too
+            if(earL > EAR_MIN_OPEN) S.blinkStateL = false;
+            if(earR > EAR_MIN_OPEN) S.blinkStateR = false;
+          }
+
+          if(blinkDetected){
+            S.blinkCounts[t]++;
+            S.blinkTimes[t].push(now);
+            S.rawEvents.push({t:now, elapsed_ms: Math.round(elapsed*1000), trial:t, blink_n:S.blinkCounts[t]});
+            // Flash + scare ghosts
+            const flash=$('blinkFlash');
+            flash.classList.add('flash');
+            setTimeout(()=>flash.classList.remove('flash'),80);
+            if(window._scareGhosts) window._scareGhosts();
+            // Update live counter
+            $('liveCount').textContent=S.blinkCounts[t]+' blink'+(S.blinkCounts[t]!==1?'s':'');
+            $('ringBlinks').textContent=S.blinkCounts[t]+' blink'+(S.blinkCounts[t]!==1?'s':'');
+          }
+
+          // Auto-stop
+          if(elapsed >= trialDur){ stopTrial(false); }
+        }
+
+        // Draw EAR overlays
+        drawEyeOverlay(ctx, kps, c.width, c.height, video.videoWidth||1280, video.videoHeight||720);
+        setStatus('TRACKING','on');
+      }
+    } else {
+      setStatus('NO FACE','warn');
+    }
+  }catch(e){ console.warn('[Blink3000] loop error:',e); }
+
+  requestAnimationFrame(loop);
+}
+
+function videoPxToCanvasPx(vx,vy,W,H,vw,vh){
+  const sc=Math.max(W/vw,H/vh);
+  const offX=(W-vw*sc)/2, offY=(H-vh*sc)/2;
+  return { cx: W-(vx*sc+offX), cy: vy*sc+offY };
+}
+
+function drawEyeOverlay(ctx,kps,W,H,vw,vh){
+  // Draw eye region dots for left and right eyes
+  const eyeGroups=[
+    { pts:[33,133,159,145,158,153,160,144,161,163,246], col:'#7b8fff', ear:S.earL, side:'L' },
+    { pts:[263,362,386,374,385,380,387,373,388,390,466], col:'#ff6b9d', ear:S.earR, side:'R' },
+  ];
+  eyeGroups.forEach(({pts,col,ear,side})=>{
+    const t=S.currentTrial;
+    const relevant=(t===side||t==='B'||!t);
+    ctx.globalAlpha=relevant?0.85:0.3;
+    ctx.strokeStyle=col;
+    ctx.fillStyle=col;
+    ctx.lineWidth=1;
+    // Draw outline polygon
+    ctx.beginPath();
+    pts.forEach((pi,i)=>{
+      const {cx,cy}=videoPxToCanvasPx(kps[pi].x,kps[pi].y,W,H,vw,vh);
+      if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+    });
+    ctx.closePath();
+    ctx.stroke();
+    // EAR label
+    const {cx:lx,cy:ly}=videoPxToCanvasPx(kps[pts[0]].x,kps[pts[0]].y,W,H,vw,vh);
+    ctx.font='bold 10px Space Mono,monospace';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(`${side} EAR:${ear.toFixed(2)}`, lx+(side==='L'?40:-40), ly-14);
+    ctx.globalAlpha=1;
+  });
+}
+
+// ── buttons ───────────────────────────────────────────────────────────────────
+$('startBtn').onclick = async () => {
+  $('startBtn').disabled=true; $('startBtn').textContent='Starting…';
+  setStatus('CAMERA…','warn');
+  try{ await startCamera(); }
+  catch(e){ toast('Camera denied — check permissions'); $('startBtn').disabled=false; $('startBtn').textContent='▶ START CAMERA'; return; }
+  setStatus('LOADING…','warn'); $('startBtn').textContent='Loading model…';
+  try{ await loadModel(); }
+  catch(e){ toast('Model failed to load'); return; }
+  S.running=true;
+  S.sessionId=Date.now();
+  $('startRow').style.display='none';
+  $('recordRow').style.display='flex';
+  resizeCanvas();
+  requestAnimationFrame(loop);
+  buildQueue();
+  nextTrial();
+  setStatus('READY','on');
+};
+
+$('recordBtn').onclick = () => {
+  if(S.trialActive){ stopTrial(true); return; }
+  if(!S.currentTrial){ toast('No trial ready'); return; }
+  startTrial();
+};
+
+$('resetBtn').onclick = () => {
+  if(S.trialActive){ if(!confirm('Stop current trial and reset?')) return; }
+  resetToSetup();
+};
+
+$('restartBtn').onclick = () => {
+  resetToSetup();
+};
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+$('exportBtn').onclick = () => {
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  const rows = ['session_id,trial,blink_n,timestamp_ms,elapsed_ms'];
+  S.rawEvents.forEach(r=>{
+    rows.push(`${S.sessionId},${r.trial},${r.blink_n},${r.t},${r.elapsed_ms}`);
+  });
+  rows.push('');
+  rows.push('# SUMMARY');
+  rows.push('trial,duration_s,blinks,blinks_per_s_hz');
+  ['L','R','B'].forEach(t=>{
+    if(S.resultsHz[t]!==null){
+      rows.push(`${t},${S.sessionDur[t].toFixed(3)},${S.blinkCounts[t]},${S.resultsHz[t].toFixed(4)}`);
+    }
+  });
+  rows.push('');
+  rows.push('# CONFIG');
+  rows.push(`trial_duration_s,${trialDur}`);
+  rows.push(`ear_blink_threshold,${EAR_BLINK_THRESH}`);
+  rows.push(`conditions_run,${S.trialQueue.join('+')}`);
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`blink3000_${ts}.csv`; a.click();
+  toast('CSV exported');
+};
+
+// ── Ghost strip animation ─────────────────────────────────────────────────────
+(function(){
+  const GHOST_SVG = (color='#4af0c8', scared=false) => `
+<svg viewBox="0 0 26 28" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="gc"><rect x="0" y="0" width="26" height="28"/></clipPath>
+  </defs>
+  <!-- body -->
+  <path class="gbody" fill="${scared?'#2040c8':color}" d="
+    M13,2
+    C7.5,2 3,6.5 3,12
+    L3,24
+    L6.5,21 L10,24 L13,21 L16,24 L19.5,21 L23,24
+    L23,12
+    C23,6.5 18.5,2 13,2Z
+  "/>
+  <!-- eye whites -->
+  <ellipse class="geye" cx="9.5" cy="12" rx="3.2" ry="3.8" fill="${scared?'#2040c8':'white'}"/>
+  <ellipse class="geye" cx="16.5" cy="12" rx="3.2" ry="3.8" fill="${scared?'#2040c8':'white'}"/>
+  <!-- pupils -->
+  <ellipse class="gpupil pupil-l" cx="10.2" cy="12.5" rx="1.6" ry="2" fill="${scared?'white':'#5060ff'}"/>
+  <ellipse class="gpupil pupil-r" cx="17.2" cy="12.5" rx="1.6" ry="2" fill="${scared?'white':'#5060ff'}"/>
+</svg>`;
+
+  const COLORS = ['#4af0c8','#ff6b9d','#7b8fff','#ffb347','#ff6b9d','#4af0c8'];
+  const lane = document.getElementById('ghostLane');
+  const STRIP_H = 38;
+  let W = lane.offsetWidth || window.innerWidth;
+  
+  const ghosts = COLORS.map((col, i) => {
+    const el = document.createElement('div');
+    el.className = 'ghost right';
+    el.innerHTML = GHOST_SVG(col);
+    // Stagger start positions so they don't bunch up
+    const startX = -40 - i * 110;
+    el.style.cssText = `left:${startX}px;animation:bob ${0.55+i*0.07}s ease-in-out infinite`;
+    lane.appendChild(el);
+    return {
+      el,
+      x: startX,
+      speed: 0.9 + i * 0.18,   // px per frame, each ghost slightly faster
+      color: col,
+      scared: false,
+      dir: 1,                    // 1=right, -1=left
+      pauseUntil: 0,
+    };
+  });
+
+  // On blink flash: scare the ghosts!
+  window._scareGhosts = function(){
+    ghosts.forEach(g=>{
+      g.scared = true;
+      g.el.innerHTML = GHOST_SVG(g.color, true);
+      g.el.classList.add('scared');
+      setTimeout(()=>{
+        g.scared = false;
+        g.el.innerHTML = GHOST_SVG(g.color, false);
+        g.el.classList.remove('scared');
+      }, 600);
+    });
+  };
+
+  let last = 0;
+  function tick(ts){
+    if(!last) last=ts;
+    const dt = Math.min(ts-last, 50); // cap delta
+    last=ts;
+    W = lane.offsetWidth || window.innerWidth;
+    ghosts.forEach(g=>{
+      if(ts < g.pauseUntil) return;
+      g.x += g.speed * g.dir * (dt/16);
+      // Wrap: when fully off right edge, reset to left
+      if(g.x > W + 10){
+        g.x = -36;
+        g.dir = 1;
+        g.el.classList.remove('left');
+        g.el.classList.add('right');
+      }
+      g.el.style.left = g.x.toFixed(1)+'px';
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  window.addEventListener('resize',()=>{ W = lane.offsetWidth || window.innerWidth; });
+})();
+
+
+resizeCanvas();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .catch(e=>console.warn('SW registration failed:',e));
+  });
+}
+</script>
+</body>
+</html>
