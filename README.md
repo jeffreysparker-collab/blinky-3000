@@ -12,15 +12,6 @@ A Progressive Web App (PWA) that measures voluntary blink rate using your device
 - **CSV export**: All blink timestamps (ms), trial metadata, and summary
 - **PWA**: Installable, works offline after first load
 
-## How to Deploy on GitHub Pages
-
-1. Create a new GitHub repository (e.g. `blink3000`)
-2. Upload all files in this folder to the repo root
-3. Go to **Settings → Pages**
-4. Set **Source** to `Deploy from a branch`, branch `main`, folder `/root`
-5. Save — your app will be live at `https://<username>.github.io/blink3000/`
-
-> **Important**: GitHub Pages requires HTTPS, which is necessary for camera access. ✓
 
 ## How It Works
 
