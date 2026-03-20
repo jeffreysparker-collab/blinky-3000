@@ -49,6 +49,8 @@ video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 canvas#overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
 #blinkFlash{position:absolute;inset:0;background:rgba(74,240,200,0);pointer-events:none;z-index:4;transition:background 0.05s;}
 #blinkFlash.flash{background:rgba(74,240,200,0.25)}
+#trialMask{position:absolute;inset:0;background:rgba(5,5,8,0);pointer-events:none;z-index:3;transition:background .4s ease;}
+#trialMask.active{background:rgba(5,5,8,0.82)}
 #liveCount{display:none;position:absolute;top:10px;right:10px;background:rgba(5,5,8,.85);border:1px solid var(--accent3);border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:13px;color:var(--accent3);letter-spacing:.5px;z-index:5;}
 
 /* Panel */
@@ -161,6 +163,7 @@ canvas#overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:n
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
   <div id="blinkFlash"></div>
+  <div id="trialMask"></div>
   <div id="liveCount">0 blinks</div>
 </div>
 
@@ -475,6 +478,7 @@ function startTrial(){
   $('timerRing').style.display='flex';
   $('liveCount').style.display=''; $('liveCount').textContent='0 blinks';
   $('ringSide').textContent=EYE_LABEL[t]; $('ringBlinks').textContent='0 blinks';
+  $('trialMask').classList.add('active');
   setStatus('RECORDING','rec');
   $('setupSection').style.display='none';
   toast(`Trial ${S.trialIdx+1}: ${EYE_LABEL[t]} — blink naturally!`);
@@ -493,6 +497,7 @@ function stopTrial(manual=false){
   $('card'+t).classList.remove('pending');
   $('recordBtn').classList.remove('recording');
   $('timerRing').style.display='none'; $('liveCount').style.display='none';
+  $('trialMask').classList.remove('active');
   setStatus('IDLE','');
   if(!manual) toast(`${EYE_LABEL[t]}: ${n} blinks / ${dur.toFixed(1)}s = ${hz.toFixed(2)} Hz`);
   setTimeout(()=>nextTrial(),800);
